@@ -224,13 +224,13 @@
 <body>
 <div class="loading-overlay" id="loading-overlay"><div class="loading-box" id="loading-text">正在解密题库<span class="loading"></span></div></div>
 
-<!-- 认证区域保持不变 -->
 <div id="auth-section" class="auth-container">
     <h2>水利综合题库</h2>
     <div class="auth-tabs">
         <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
         <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
     </div>
+    <!-- 登录表单 -->
     <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
         <div class="form-group"><label>邮箱</label><input type="email" id="login-email" required placeholder="注册邮箱"></div>
         <div class="form-group"><label>密码</label><input type="password" id="login-password" required placeholder="密码"></div>
@@ -238,8 +238,11 @@
         <button type="button" class="btn-switch" id="auth-switch-bank-btn">切换题库 (当前：第1题库)</button>
         <button type="submit" class="btn-primary">登录</button>
         <button type="button" class="btn-secondary" onclick="startTrial()">免注册试用 (5题)</button>
+        <!-- 登录界面的“使用说明”按钮保持不变 -->
+        <button type="button" class="btn-info" onclick="window.open('https://d2c96acd.pinme.dev', '_blank')">📖 使用说明</button>
         <div id="login-message" class="message"></div>
     </form>
+    <!-- 注册表单 -->
     <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
         <div class="form-group"><label>邮箱(用户名)</label><input type="email" id="reg-email" required></div>
         <div class="form-group"><label>手机号(云错题库码)</label><input type="tel" id="reg-phone" required pattern="[0-9]{11}"></div>
@@ -247,27 +250,30 @@
         <div class="form-group"><label>确认密码</label><input type="password" id="reg-confirm" required></div>
         <div class="form-group"><label>库码</label><input type="password" id="reg-lib-code" required placeholder="请输入库码"></div>
         <button type="submit" class="btn-primary">提交注册申请</button>
+        <!-- 注册界面的“捐助作者”按钮 -->
+        <button type="button" class="btn-info" id="donateBtnReg" style="background:#ff9800; margin-top:10px;">❤️ 捐助作者</button>
         <div id="register-message" class="message"></div>
         <p style="font-size:12px; color:#666; margin-top:10px;" id="email-hint"></p>
     </form>
-    <button type="button" class="btn-info" onclick="window.open('https://d2c96acd.pinme.dev', '_blank')">📖 使用说明</button>
 </div>
 
 <div id="main-section" class="container" style="display:none;">
-    <!-- 用户信息栏等和原版完全一致，此处省略重复内容但保留全部功能（实际运行时与原始相同） -->
     <div class="user-info-bar" id="user-bar">
         <span id="user-email-display"></span>
         <span id="user-code-display"></span>
         <button class="logout-btn" id="logout-btn">退出</button>
+        <button class="btn-info" id="donateBtnMain" style="background:#ff9800; padding:6px 18px; font-size:14px; width:auto; margin-left:10px;">❤️ 捐助作者</button>
         <button class="btn-switch" id="main-switch-bank-btn" style="padding:6px 18px; font-size:14px; width:auto;">切换题库</button>
     </div>
     <div id="trial-notice" class="trial-banner" style="display:none;">
         🎯 试用模式 · 还可作答 <span id="trial-remaining">5</span> 题
     </div>
+
     <div class="mode-tabs">
         <button class="mode-tab active" data-mode="practice">📘 练习模式</button>
         <button class="mode-tab" data-mode="exam">📝 考试模式</button>
     </div>
+
     <div id="practice-panel" class="practice-panel">
         <div class="wrong-code-input-container">
             <label>错题库码：</label>
@@ -278,27 +284,81 @@
             <button class="btn-import" id="import-wrong-btn">导入错题库</button>
             <input type="file" id="import-file-input" accept=".json" style="display:none">
         </div>
-        <div class="navigation"><div class="nav-row"><button class="nav-button active" id="all-questions-btn">全部题库</button><button class="nav-button" id="wrong-questions-btn">错题库</button></div><div class="nav-row"><button class="nav-button active" data-type="single">单选</button><button class="nav-button" data-type="multiple">多选</button><button class="nav-button" data-type="judgment">判断</button></div></div>
+        <div class="navigation">
+            <div class="nav-row">
+                <button class="nav-button active" id="all-questions-btn">全部题库</button>
+                <button class="nav-button" id="wrong-questions-btn">错题库</button>
+            </div>
+            <div class="nav-row">
+                <button class="nav-button active" data-type="single">单选</button>
+                <button class="nav-button" data-type="multiple">多选</button>
+                <button class="nav-button" data-type="judgment">判断</button>
+            </div>
+        </div>
         <div class="current-info"><div class="current-info-text" id="current-info-text">当前作答：全部题库 单选题</div></div>
         <div class="progress" id="practice-progress">题目 1/1</div>
-        <div class="question-container"><div class="question-number" id="practice-q-num">题目 1</div><div class="question-text" id="practice-q-text">题目内容</div><ul class="options" id="practice-options"></ul><div class="feedback" id="practice-feedback"></div></div>
-        <div class="jump-container"><label>跳转</label><input type="number" id="practice-jump" min="1" value="1"><label>题</label><button class="nav-btn" id="practice-jump-btn">跳转</button></div>
-        <div class="navigation-buttons"><button class="nav-btn" id="practice-prev" disabled>上一题</button><button class="nav-btn" id="practice-confirm">确认</button><button class="nav-btn" id="practice-next">下一题</button></div>
+        <div class="question-container">
+            <div class="question-number" id="practice-q-num">题目 1</div>
+            <div class="question-text" id="practice-q-text">题目内容</div>
+            <ul class="options" id="practice-options"></ul>
+            <div class="feedback" id="practice-feedback"></div>
+        </div>
+        <div class="jump-container">
+            <label>跳转</label><input type="number" id="practice-jump" min="1" value="1"><label>题</label>
+            <button class="nav-btn" id="practice-jump-btn">跳转</button>
+        </div>
+        <div class="navigation-buttons">
+            <button class="nav-btn" id="practice-prev" disabled>上一题</button>
+            <button class="nav-btn" id="practice-confirm">确认</button>
+            <button class="nav-btn" id="practice-next">下一题</button>
+        </div>
     </div>
+
     <div id="exam-panel" class="exam-panel">
-        <div class="exam-header"><div>📌 题目 <span id="exam-current">1</span>/<span id="exam-total">140</span></div><div>✅ 已答 <span id="exam-answered">0</span>/<span id="exam-total-count">140</span></div></div>
-        <div class="navigation"><button class="nav-button" id="exam-single-btn">单选题</button><button class="nav-button" id="exam-multi-btn">多选题</button><button class="nav-button" id="exam-judge-btn">判断题</button><button class="nav-button" id="exam-unanswered-btn">未答题</button><button class="nav-button" id="exam-submit-btn">交卷</button><button class="nav-button" id="exam-newtest-btn">重新抽题</button><button class="nav-button" id="exam-wrong-btn" style="background:#ff9800;">错题回看</button></div>
-        <div id="exam-type-notice" class="type-notice"></div><div class="question-container"><div id="exam-q-title" class="question-title"></div><div id="exam-options-container"></div></div>
-        <div class="bottom-navigation"><button class="nav-btn" id="exam-prev-btn">上一题</button><button class="nav-btn" id="exam-confirm-btn">确认</button><button class="nav-btn" id="exam-next-btn">下一题</button></div>
+        <div class="exam-header">
+            <div>📌 题目 <span id="exam-current">1</span>/<span id="exam-total">140</span></div>
+            <div>✅ 已答 <span id="exam-answered">0</span>/<span id="exam-total-count">140</span></div>
+        </div>
+        <div class="navigation">
+            <button class="nav-button" id="exam-single-btn">单选题</button>
+            <button class="nav-button" id="exam-multi-btn">多选题</button>
+            <button class="nav-button" id="exam-judge-btn">判断题</button>
+            <button class="nav-button" id="exam-unanswered-btn">未答题</button>
+            <button class="nav-button" id="exam-submit-btn">交卷</button>
+            <button class="nav-button" id="exam-newtest-btn">重新抽题</button>
+            <button class="nav-button" id="exam-wrong-btn" style="background:#ff9800;">错题回看</button>
+        </div>
+        <div id="exam-type-notice" class="type-notice"></div>
+        <div class="question-container">
+            <div id="exam-q-title" class="question-title"></div>
+            <div id="exam-options-container"></div>
+        </div>
+        <div class="bottom-navigation">
+            <button class="nav-btn" id="exam-prev-btn">上一题</button>
+            <button class="nav-btn" id="exam-confirm-btn">确认</button>
+            <button class="nav-btn" id="exam-next-btn">下一题</button>
+        </div>
     </div>
 </div>
 
-<!-- 模态框略写（与原始一致） -->
+<!-- 模态框 -->
 <div id="result-modal" class="modal"><div class="modal-content"> <span class="close" onclick="closeModal('result-modal')">&times;</span> <h2>考试结果</h2> <div id="result-details"></div> <div style="display:flex; gap:15px; margin-top:20px;"> <button class="nav-btn" id="restart-exam-btn">重新考试</button> <button class="nav-btn" id="result-wrong-btn">错题回看</button> </div> </div></div>
 <div id="confirm-modal" class="modal"><div class="modal-content"> <h3>确认重新抽题？</h3><p>当前进度将清空</p> <div style="display:flex; gap:15px;"> <button class="nav-btn" id="confirm-yes">是</button><button class="nav-btn" id="confirm-no">否</button> </div> </div></div>
 <div id="submit-confirm-modal" class="modal"><div class="modal-content"> <h3>确认交卷？</h3> <div style="display:flex; gap:15px;"> <button class="nav-btn" id="submit-yes">交卷</button><button class="nav-btn" id="submit-no">取消</button> </div> </div></div>
 <div id="wrong-modal" class="modal"><div class="modal-content" style="max-width:800px;"> <span class="close" onclick="closeModal('wrong-modal')">&times;</span> <h2>📚 错题回看</h2> <div id="wrong-list"></div> <p>共 <span id="wrong-count">0</span> 道</p> <button class="nav-btn" onclick="closeModal('wrong-modal')">关闭</button> </div></div>
 <div id="backup-progress-modal" class="modal"><div class="modal-content" style="text-align:center;"> <h3>错题备份中</h3> <p id="backup-progress-text">正在备份到云端...</p> <progress id="backup-progress-bar" value="0" max="100" style="width:100%;"></progress> </div></div>
+
+<!-- 捐助作者图片弹窗 -->
+<div id="donateModal" class="modal">
+    <div class="modal-content" style="text-align:center; max-width:500px;">
+        <span class="close" onclick="closeModal('donateModal')">&times;</span>
+        <h3>🙏 感谢支持</h3>
+        <!-- 请将下面的图片替换为您自己的图片（支持网络图片、Base64或本地路径） -->
+        <img src="donate.jpg" alt="捐助作者" style="max-width:100%; border-radius:12px; margin:15px 0;">
+        <p style="color:#666;">您的支持是作者持续更新的动力！</p>
+        <button class="nav-btn" onclick="closeModal('donateModal')">关闭</button>
+    </div>
+</div>
 
 <script>
 // ==================== 加密题库数据（密文占位符） ====================
@@ -309,7 +369,7 @@ const ENCRYPTED_BANKS = "LENFR0g4TR0aCxUaBExZIkkSW1J1W0VJUDIaCwARGxkPTFlbBQnVouW
 // 固定密钥（必须与加密工具一致）
 const BANKS_SECRET = "WaterConservancy2026";
 
-// 解密函数：Base64 -> XOR解密 -> JSON字符串
+// 解密函数
 function base64ToUint8(base64) {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -332,14 +392,13 @@ try {
     const encryptedBuf = base64ToUint8(ENCRYPTED_BANKS);
     const decryptedJson = xorDecrypt(encryptedBuf, BANKS_SECRET);
     EMBEDDED_BANKS = JSON.parse(decryptedJson);
-    // 校验结构
     if (!EMBEDDED_BANKS["1"] || !EMBEDDED_BANKS["2"]) throw new Error("解密后题库结构异常");
 } catch(e) {
-    console.error("题库解密失败，请检查密文和密钥是否匹配", e);
+    console.error("题库解密失败", e);
     alert("题库数据损坏或密文无效，请联系管理员重新生成。");
 }
 
-// ---------- 以下所有业务逻辑与原版完全相同，只依赖 EMBEDDED_BANKS ----------
+// ---------- 以下为业务逻辑（与原版完全一致，仅增加捐助弹窗） ----------
 const CLOUD = {
     REG_KEY: atob('WkNYWDIwMDIwMzA4'), USER_PREFIX: atob('U0xaQ0s='), ADMIN_EMAIL: atob('NjcwNjU2MjE2QHFxLmNvbQ=='),
     API_UPDATE: atob('aHR0cHM6Ly9hcGkudGV4dGRiLm9ubGluZS91cGRhdGUv'),
@@ -369,7 +428,7 @@ function getWrongQuestionsByType(type) { return wrongItems.filter(item => item.t
 async function loadBankData(bankId) { if(bankCache[bankId]) return bankCache[bankId]; showLoading(true, '正在加载本地题库<span class="loading"></span>'); try { const embedded = EMBEDDED_BANKS[bankId]; if(!embedded || (!embedded.single && !embedded.multiple && !embedded.judgment)) throw new Error(`题库${bankId}数据未定义`); const bank = { single: embedded.single || [], multiple: embedded.multiple || [], judgment: embedded.judgment || [] }; bankCache[bankId] = bank; bankProgress[bankId] = { totalBatches: 1, loadedBatches: 1 }; showLoading(false); return bank; } catch(e) { showLoading(false); alert(`题库${bankId}加载失败，请检查解密后数据`); return null; } }
 function isBankReady(bankId) { const p = bankProgress[bankId]; return p && p.loadedBatches >= p.totalBatches; }
 function switchMode(mode) { document.getElementById('practice-panel').style.display = mode==='practice'?'block':'none'; document.getElementById('exam-panel').style.display = mode==='exam'?'block':'none'; document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===mode)); if(mode==='exam') renderExamQuestion(); }
-function initPractice() { /* 事件绑定与原版完全一致，省略重复代码防止过长，实际功能不变 */ 
+function initPractice() { 
     document.getElementById('all-questions-btn').onclick = () => { practiceMode='all'; updatePracticeNav(); loadPracticeQuestions(); };
     document.getElementById('wrong-questions-btn').onclick = () => { if(isTrialMode) return alert('试用不支持错题库'); practiceMode='wrong'; updatePracticeNav(); loadPracticeQuestions(); };
     document.querySelectorAll('[data-type]').forEach(b => b.addEventListener('click', function(){ practiceType = this.dataset.type; updatePracticeNav(); loadPracticeQuestions(); }));
@@ -388,7 +447,7 @@ function loadPracticeQuestions() { if(!currentBank) return; practiceQuestions = 
 function renderPracticeQuestion() { if(!currentBank || practiceQuestions.length===0) { document.getElementById('practice-q-num').textContent = '暂无题目'; document.getElementById('practice-q-text').textContent = '当前题库没有题目'; document.getElementById('practice-options').innerHTML = ''; document.getElementById('practice-feedback').style.display = 'none'; document.getElementById('practice-progress').textContent = '题目 0/0'; document.getElementById('practice-prev').disabled = true; document.getElementById('practice-next').disabled = true; return; } if(practiceIndex >= practiceQuestions.length) practiceIndex = 0; const q = practiceQuestions[practiceIndex]; document.getElementById('practice-q-num').textContent = `题目 ${practiceIndex+1}`; document.getElementById('practice-q-text').textContent = q.question; const opts = document.getElementById('practice-options'); opts.innerHTML = ''; q.options.forEach((opt, i) => { const li = document.createElement('li'); li.textContent = opt; li.dataset.value = String.fromCharCode(65+i); li.addEventListener('click', () => selectPracticeOption(li, q.type)); opts.appendChild(li); }); selectedOptions = []; document.getElementById('practice-feedback').style.display = 'none'; document.getElementById('practice-prev').disabled = practiceIndex === 0; document.getElementById('practice-next').disabled = practiceIndex === practiceQuestions.length-1; document.getElementById('practice-progress').textContent = `题目 ${practiceIndex+1}/${practiceQuestions.length}`; document.getElementById('practice-jump').max = practiceQuestions.length; document.getElementById('practice-jump').value = practiceIndex+1; }
 function selectPracticeOption(el, type) { const val = el.dataset.value; if(type === 'multiple') { if(selectedOptions.includes(val)) { selectedOptions = selectedOptions.filter(v=>v!==val); el.classList.remove('selected'); } else { selectedOptions.push(val); el.classList.add('selected'); } } else { document.querySelectorAll('#practice-options li').forEach(li => li.classList.remove('selected')); selectedOptions = [val]; el.classList.add('selected'); } }
 async function practiceConfirm() { if(isTrialMode && trialRemaining <= 0) { alert('试用结束'); return; } if(selectedOptions.length === 0) { alert('请选择答案'); return; } const q = practiceQuestions[practiceIndex]; let correct = false; if(q.type === 'multiple') correct = selectedOptions.length === q.answer.length && selectedOptions.every(v => q.answer.includes(v)) && q.answer.every(a => selectedOptions.includes(a)); else correct = selectedOptions[0] === q.answer; const fb = document.getElementById('practice-feedback'); fb.style.display = 'block'; fb.className = 'feedback ' + (correct?'correct':'incorrect'); fb.textContent = correct ? '回答正确！' : `错误！正确答案：${q.type==='multiple'?q.answer.join('、'):q.answer}`; if(correct && practiceMode==='wrong' && !isTrialMode && wrongCode) { await removeWrongItem(q); practiceQuestions = getWrongQuestionsByType(practiceType); if(practiceQuestions.length === 0) { alert('该题型错题已全部掌握'); practiceMode = 'all'; updatePracticeNav(); loadPracticeQuestions(); } else { if(practiceIndex >= practiceQuestions.length) practiceIndex = practiceQuestions.length-1; renderPracticeQuestion(); } } else if(!correct && practiceMode==='all' && !isTrialMode && wrongCode) { await addWrongItem(q); } }
-function initExam() { /* 与原版一致 */ 
+function initExam() { 
     document.getElementById('exam-single-btn').onclick = () => { examData.filterType='single'; examData.currentIndex=0; renderExamQuestion(); };
     document.getElementById('exam-multi-btn').onclick = () => { examData.filterType='multiple'; examData.currentIndex=0; renderExamQuestion(); };
     document.getElementById('exam-judge-btn').onclick = () => { examData.filterType='judgment'; examData.currentIndex=0; renderExamQuestion(); };
@@ -430,6 +489,13 @@ async function enterApp() {
 function updateBankButtons() { const name='当前：第'+currentBankId+'题库'; document.getElementById('auth-switch-bank-btn').textContent='切换题库 ('+name+')'; document.getElementById('main-switch-bank-btn').textContent='切换题库 ('+name+')'; }
 document.querySelectorAll('.mode-tab').forEach(t=>t.addEventListener('click',function(){ switchMode(this.dataset.mode); }));
 let saved=localStorage.getItem('slzck_user'); if(saved){ try{ currentUser=JSON.parse(saved); enterApp(); }catch(e){} }
+
+// 捐助作者弹窗事件绑定（使用事件委托，确保动态生成的按钮也能响应）
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'donateBtnReg' || e.target.id === 'donateBtnMain') {
+        document.getElementById('donateModal').style.display = 'block';
+    }
+});
 </script>
 </body>
 </html>
