@@ -300,7 +300,7 @@
         <button type="button" class="btn-switch" id="auth-switch-bank-btn">切换题库 (当前：第1题库)</button>
         <button type="submit" class="btn-primary">登录</button>
         <button type="button" class="btn-secondary" onclick="startTrial()">免注册试用 (5题)</button>
-        <button type="button" class="btn-info" onclick="window.open('https://d2c96acd.pinme.dev', '_blank')">📖 使用说明</button>
+        <button type="button" class="btn-info" onclick="window.open('help.html', '_blank')">📖 使用说明</button>
         <div id="login-message" class="message"></div>
     </form>
     <!-- 注册表单 -->
@@ -319,12 +319,13 @@
 
 <div id="main-section" class="container" style="display:none;">
     <div class="user-info-bar" id="user-bar">
-        <span id="user-email-display"></span>
-        <span id="user-code-display"></span>
-        <button class="logout-btn" id="logout-btn">退出</button>
-        <button class="btn-info" id="donateBtnMain" style="background:#ff9800; padding:6px 18px; font-size:14px; width:auto; margin-left:10px;">❤️ 捐助作者</button>
-        <button class="btn-switch" id="main-switch-bank-btn" style="padding:6px 18px; font-size:14px; width:auto;">切换题库</button>
-    </div>
+    <span id="user-email-display"></span>
+    <span id="user-code-display"></span>
+    <button class="logout-btn" id="logout-btn">退出</button>
+    <button class="btn-info" onclick="window.open('help.html', '_blank')" style="background:#2196F3; padding:6px 18px; font-size:14px; width:auto; margin-left:10px;">📖 使用说明</button>
+    <button class="btn-info" id="donateBtnMain" style="background:#ff9800; padding:6px 18px; font-size:14px; width:auto; margin-left:10px;">❤️ 捐助作者</button>
+    <button class="btn-switch" id="main-switch-bank-btn" style="padding:6px 18px; font-size:14px; width:auto;">切换题库</button>
+</div>
     <div id="trial-notice" class="trial-banner" style="display:none;">
         🎯 试用模式 · 还可作答 <span id="trial-remaining">5</span> 题
     </div>
