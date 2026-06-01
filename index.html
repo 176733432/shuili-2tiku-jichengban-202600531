@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>河北水利三类人员题库 · 双题库（快速加载版）</title>
+    <title>河北水利三类人员题库 · 双题库（极速加载版）</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Microsoft YaHei', Arial, sans-serif; line-height: 1.6; background-color: #f5f5f5; color: #333; padding: 20px; }
@@ -96,7 +96,7 @@
     <div class="init-loading-box">
         <div class="loading-spinner"></div>
         <h3>📚 题库加载中</h3>
-        <p>优先加载部分题目，您可稍后开始练习...</p>
+        <p>快速启动中，您可稍后开始练习...</p>
         <div class="progress-bar-container"><div id="initProgressFill" class="progress-fill" style="width:0%"></div></div>
         <p id="initLoadingText">正在准备题库...</p>
     </div>
@@ -223,14 +223,14 @@
 <div id="backup-progress-modal" class="modal"><div class="modal-content" style="text-align:center;"><h3>错题备份中</h3><p id="backup-progress-text">正在备份到云端...</p><progress id="backup-progress-bar" value="0" max="100" style="width:100%;"></progress></div></div>
 
 <script>
-
-// ==================== 新版数据加载逻辑（从外部 JSON 加载） ====================
-const BANK_JSON_URL = 'banks.json';  // 请确保此文件与 index.html 在同一目录
+// ==================== 渐进加载配置 ====================
+const QUICK_JSON_URL = 'quick.json';   // 前50题快速包
+const FULL_JSON_URL = 'full.json';     // 完整题库（原 banks.json 重命名）
 const DB_NAME = 'QuestionBankDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'banks';
 
-let fullBankMaster = null;          // 完整题库数据
+let fullBankMaster = null;          // 最终完整题库（可能先为quick，后替换为full）
 let currentBankId = 1;
 let currentBank = null;
 let bankCache = {};
@@ -255,7 +255,7 @@ const CLOUD = {
     API_READ: atob('aHR0cHM6Ly90ZXh0ZGIub25saW5lLw=='), TRIAL_LIMIT: 5
 };
 
-// 辅助函数
+// ---------- 辅助函数 ----------
 function getUserKey(libCode) { return CLOUD.USER_PREFIX + libCode; }
 function getWrongCloudKey() { return wrongCode ? wrongCode + (currentBankId===1?'01':'02') : ''; }
 function getWrongLocalKey() { return 'local_wrong_' + getWrongCloudKey(); }
@@ -314,7 +314,7 @@ function updateProgress(percent, text) {
     if (txt) txt.innerText = text;
 }
 
-// 获取部分题库（每种题型前50题）
+// 获取部分题库（前50题）
 function getPartialBank(bankId) {
     const full = fullBankMaster[bankId];
     return {
@@ -324,7 +324,7 @@ function getPartialBank(bankId) {
     };
 }
 
-// 后台静默加载剩余题目
+// 后台加载剩余题目（当 fullBankMaster 已是完整数据时调用）
 async function loadRemainingInBackground(bankId) {
     const full = fullBankMaster[bankId];
     const current = bankCache[bankId];
@@ -340,53 +340,59 @@ async function loadRemainingInBackground(bankId) {
     }
 }
 
-// 核心初始化
+// 渐进加载主函数
 async function initSystem() {
     const overlay = document.getElementById('initLoadingOverlay');
     updateProgress(5, '检查本地缓存...');
-    let cached = null;
+    
+    // 1. 尝试从 IndexedDB 加载完整题库
+    let fullFromDB = null;
     try {
-        cached = await loadFromIndexedDB('full_bank');
+        fullFromDB = await loadFromIndexedDB('full_bank');
     } catch(e) { console.warn(e); }
-
-    if (cached && cached["1"] && cached["2"]) {
-        fullBankMaster = cached;
-        updateProgress(60, '从本地缓存加载题库');
-        await new Promise(r => setTimeout(r, 200));
+    
+    if (fullFromDB && fullFromDB["1"] && fullFromDB["2"]) {
+        // 已有完整缓存，直接使用
+        fullBankMaster = fullFromDB;
+        updateProgress(60, '从缓存加载完整题库');
+        await new Promise(r => setTimeout(r, 100));
     } else {
-        updateProgress(20, '从网络加载题库文件...');
-        try {
-            const response = await fetch(BANK_JSON_URL);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            fullBankMaster = await response.json();
-            updateProgress(70, '缓存题库到本地...');
-            await saveToIndexedDB('full_bank', fullBankMaster);
-            updateProgress(85, '题库已缓存');
-        } catch (err) {
-            console.error('题库加载失败', err);
-            alert('无法加载题库文件，请检查网络或确认 banks.json 是否存在');
-            return;
-        }
+        // 2. 没有完整缓存，先加载 quick.json（极速）
+        updateProgress(20, '加载快速启动包...');
+        const quickResp = await fetch(QUICK_JSON_URL);
+        const quickData = await quickResp.json();
+        // 将 quick 数据作为临时完整题库（但实际内容只有前50题）
+        fullBankMaster = quickData;
+        updateProgress(50, '快速启动包已就绪');
+        
+        // 3. 后台静默加载完整题库
+        fetch(FULL_JSON_URL).then(res => res.json()).then(async fullData => {
+            fullBankMaster = fullData;
+            await saveToIndexedDB('full_bank', fullData);
+            console.log('完整题库已缓存');
+            // 如果当前已经显示界面，且用户正在使用，则静默更新当前题库
+            if (currentBank) {
+                loadRemainingInBackground(currentBankId);
+            }
+        }).catch(err => console.error('完整题库加载失败', err));
     }
-
-    if (!fullBankMaster["1"] || !fullBankMaster["2"]) {
-        alert('题库数据格式错误，请联系管理员');
-        return;
-    }
-
+    
+    // 4. 取出前50题作为当前题库（如果已有完整，也是前50）
     bankCache[currentBankId] = getPartialBank(currentBankId);
     currentBank = bankCache[currentBankId];
     bankProgress[currentBankId] = { totalBatches: 1, loadedBatches: 1 };
-
+    
     updateProgress(100, '加载完成');
     setTimeout(() => {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 300);
         document.getElementById('disclaimerModal').style.display = 'flex';
     }, 400);
-
-    // 后台加载剩余全部题目
-    setTimeout(() => loadRemainingInBackground(currentBankId), 500);
+    
+    // 后台加载剩余题目（如果 fullBankMaster 不是 quick，则补充）
+    if (fullBankMaster["1"].single.length > 50) {
+        setTimeout(() => loadRemainingInBackground(currentBankId), 500);
+    }
 }
 
 // 切换题库时动态加载对应题库
@@ -395,11 +401,14 @@ async function loadBankData(bankId) {
     const partial = getPartialBank(bankId);
     bankCache[bankId] = partial;
     bankProgress[bankId] = { totalBatches: 1, loadedBatches: 1 };
-    setTimeout(() => loadRemainingInBackground(bankId), 100);
+    // 如果完整题库已加载完，则后台补齐剩余
+    if (fullBankMaster && fullBankMaster[bankId] && fullBankMaster[bankId].single.length > 50) {
+        setTimeout(() => loadRemainingInBackground(bankId), 100);
+    }
     return partial;
 }
 
-// 以下为所有业务逻辑（与原版完全一致，直接复制您现有的函数）
+// ---------- 以下为原有业务逻辑（无改动） ----------
 function switchMode(mode) {
     document.getElementById('practice-panel').style.display = mode==='practice'?'block':'none';
     document.getElementById('exam-panel').style.display = mode==='exam'?'block':'none';
