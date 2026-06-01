@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>河北水利三类人员题库 · 双题库（极速加载版）</title>
+    <title>河北水利三类人员题库·双题库</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Microsoft YaHei', Arial, sans-serif; line-height: 1.6; background-color: #f5f5f5; color: #333; padding: 20px; }
@@ -88,15 +88,46 @@
         .btn-grey { background: #9e9e9e; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; }
         .btn-grey:hover { background: #757575; }
         .btn-grey:disabled, .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* 实时加载进度条（顶部浮动） */
+        .loading-progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #2c7da0;
+            color: white;
+            text-align: center;
+            padding: 6px 12px;
+            font-size: 14px;
+            z-index: 10000;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .loading-progress-bar.hide {
+            transform: translateY(-100%);
+        }
+        .loading-progress-bar span {
+            font-weight: bold;
+            background: rgba(0,0,0,0.2);
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
         @media (max-width: 700px) { .nav-row { flex-wrap: wrap; } }
     </style>
 </head>
 <body>
+<!-- 实时加载进度提示条（初始隐藏，加载完整题库时显示） -->
+<div id="loadProgressBar" class="loading-progress-bar hide" onclick="this.classList.add('hide')">
+    <span>📥 后台加载中...</span> <span id="loadedCountDisplay">0</span> / <span id="totalCountDisplay">0</span> 道题
+</div>
+
 <div id="initLoadingOverlay" class="init-loading-overlay">
     <div class="init-loading-box">
         <div class="loading-spinner"></div>
         <h3>📚 题库加载中</h3>
-        <p>快速启动中，您可稍后开始练习...</p>
+        <p>优先加载部分题目，您可稍后开始练习...</p>
         <div class="progress-bar-container"><div id="initProgressFill" class="progress-fill" style="width:0%"></div></div>
         <p id="initLoadingText">正在准备题库...</p>
     </div>
@@ -223,14 +254,14 @@
 <div id="backup-progress-modal" class="modal"><div class="modal-content" style="text-align:center;"><h3>错题备份中</h3><p id="backup-progress-text">正在备份到云端...</p><progress id="backup-progress-bar" value="0" max="100" style="width:100%;"></progress></div></div>
 
 <script>
-// ==================== 渐进加载配置 ====================
-const QUICK_JSON_URL = 'quick.json';   // 前50题快速包
-const FULL_JSON_URL = 'full.json';     // 完整题库（原 banks.json 重命名）
+// ==================== 渐进加载 + 实时进度条 ====================
+const QUICK_JSON_URL = 'quick.json';
+const FULL_JSON_URL = 'full.json';
 const DB_NAME = 'QuestionBankDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'banks';
 
-let fullBankMaster = null;          // 最终完整题库（可能先为quick，后替换为full）
+let fullBankMaster = null;
 let currentBankId = 1;
 let currentBank = null;
 let bankCache = {};
@@ -255,7 +286,7 @@ const CLOUD = {
     API_READ: atob('aHR0cHM6Ly90ZXh0ZGIub25saW5lLw=='), TRIAL_LIMIT: 5
 };
 
-// ---------- 辅助函数 ----------
+// 辅助函数（保持原有）
 function getUserKey(libCode) { return CLOUD.USER_PREFIX + libCode; }
 function getWrongCloudKey() { return wrongCode ? wrongCode + (currentBankId===1?'01':'02') : ''; }
 function getWrongLocalKey() { return 'local_wrong_' + getWrongCloudKey(); }
@@ -306,7 +337,6 @@ async function loadFromIndexedDB(key) {
     });
 }
 
-// 进度更新
 function updateProgress(percent, text) {
     const fill = document.getElementById('initProgressFill');
     const txt = document.getElementById('initLoadingText');
@@ -324,60 +354,100 @@ function getPartialBank(bankId) {
     };
 }
 
-// 后台加载剩余题目（当 fullBankMaster 已是完整数据时调用）
+// 后台加载剩余题目，并实时更新顶部进度条
+let totalFullQuestions = 0;
+let loadedFullQuestions = 0;
+let progressBarVisible = false;
+
+function updateProgressBar(loaded, total) {
+    const bar = document.getElementById('loadProgressBar');
+    const loadedSpan = document.getElementById('loadedCountDisplay');
+    const totalSpan = document.getElementById('totalCountDisplay');
+    if (loadedSpan && totalSpan) {
+        loadedSpan.innerText = loaded;
+        totalSpan.innerText = total;
+    }
+    if (!progressBarVisible && loaded < total) {
+        bar.classList.remove('hide');
+        progressBarVisible = true;
+    }
+    if (loaded >= total && progressBarVisible) {
+        bar.innerHTML = `<span>✅ 全部题库加载完成 (${total} 道题)</span>`;
+        setTimeout(() => {
+            bar.classList.add('hide');
+            progressBarVisible = false;
+        }, 3000);
+    }
+}
+
 async function loadRemainingInBackground(bankId) {
     const full = fullBankMaster[bankId];
     const current = bankCache[bankId];
     if (!current) return;
-    if (full.single.length > current.single.length) {
-        current.single.push(...full.single.slice(current.single.length));
-    }
-    if (full.multiple.length > current.multiple.length) {
-        current.multiple.push(...full.multiple.slice(current.multiple.length));
-    }
-    if (full.judgment.length > current.judgment.length) {
-        current.judgment.push(...full.judgment.slice(current.judgment.length));
+    
+    // 计算总题数（仅当前题库）
+    totalFullQuestions = (full.single.length + full.multiple.length + full.judgment.length);
+    loadedFullQuestions = (current.single.length + current.multiple.length + current.judgment.length);
+    updateProgressBar(loadedFullQuestions, totalFullQuestions);
+    
+    // 分批加载，每批100题，避免卡死
+    const batchSize = 100;
+    while (loadedFullQuestions < totalFullQuestions) {
+        let added = 0;
+        if (current.single.length < full.single.length) {
+            const need = Math.min(batchSize, full.single.length - current.single.length);
+            current.single.push(...full.single.slice(current.single.length, current.single.length + need));
+            added += need;
+        }
+        if (added < batchSize && current.multiple.length < full.multiple.length) {
+            const need = Math.min(batchSize - added, full.multiple.length - current.multiple.length);
+            current.multiple.push(...full.multiple.slice(current.multiple.length, current.multiple.length + need));
+            added += need;
+        }
+        if (added < batchSize && current.judgment.length < full.judgment.length) {
+            const need = Math.min(batchSize - added, full.judgment.length - current.judgment.length);
+            current.judgment.push(...full.judgment.slice(current.judgment.length, current.judgment.length + need));
+            added += need;
+        }
+        if (added === 0) break;
+        loadedFullQuestions += added;
+        updateProgressBar(loadedFullQuestions, totalFullQuestions);
+        await new Promise(r => setTimeout(r, 30));
     }
 }
 
-// 渐进加载主函数
+// 主初始化（先快速加载 quick.json，再后台加载 full.json）
 async function initSystem() {
     const overlay = document.getElementById('initLoadingOverlay');
     updateProgress(5, '检查本地缓存...');
     
-    // 1. 尝试从 IndexedDB 加载完整题库
     let fullFromDB = null;
     try {
         fullFromDB = await loadFromIndexedDB('full_bank');
     } catch(e) { console.warn(e); }
     
     if (fullFromDB && fullFromDB["1"] && fullFromDB["2"]) {
-        // 已有完整缓存，直接使用
         fullBankMaster = fullFromDB;
         updateProgress(60, '从缓存加载完整题库');
         await new Promise(r => setTimeout(r, 100));
     } else {
-        // 2. 没有完整缓存，先加载 quick.json（极速）
         updateProgress(20, '加载快速启动包...');
         const quickResp = await fetch(QUICK_JSON_URL);
         const quickData = await quickResp.json();
-        // 将 quick 数据作为临时完整题库（但实际内容只有前50题）
         fullBankMaster = quickData;
         updateProgress(50, '快速启动包已就绪');
         
-        // 3. 后台静默加载完整题库
+        // 后台加载完整题库，并实时更新进度
         fetch(FULL_JSON_URL).then(res => res.json()).then(async fullData => {
             fullBankMaster = fullData;
             await saveToIndexedDB('full_bank', fullData);
             console.log('完整题库已缓存');
-            // 如果当前已经显示界面，且用户正在使用，则静默更新当前题库
             if (currentBank) {
-                loadRemainingInBackground(currentBankId);
+                await loadRemainingInBackground(currentBankId);
             }
         }).catch(err => console.error('完整题库加载失败', err));
     }
     
-    // 4. 取出前50题作为当前题库（如果已有完整，也是前50）
     bankCache[currentBankId] = getPartialBank(currentBankId);
     currentBank = bankCache[currentBankId];
     bankProgress[currentBankId] = { totalBatches: 1, loadedBatches: 1 };
@@ -389,26 +459,24 @@ async function initSystem() {
         document.getElementById('disclaimerModal').style.display = 'flex';
     }, 400);
     
-    // 后台加载剩余题目（如果 fullBankMaster 不是 quick，则补充）
+    // 如果已有完整缓存，后台补齐剩余题目
     if (fullBankMaster["1"].single.length > 50) {
         setTimeout(() => loadRemainingInBackground(currentBankId), 500);
     }
 }
 
-// 切换题库时动态加载对应题库
 async function loadBankData(bankId) {
     if (bankCache[bankId]) return bankCache[bankId];
     const partial = getPartialBank(bankId);
     bankCache[bankId] = partial;
     bankProgress[bankId] = { totalBatches: 1, loadedBatches: 1 };
-    // 如果完整题库已加载完，则后台补齐剩余
     if (fullBankMaster && fullBankMaster[bankId] && fullBankMaster[bankId].single.length > 50) {
         setTimeout(() => loadRemainingInBackground(bankId), 100);
     }
     return partial;
 }
 
-// ---------- 以下为原有业务逻辑（无改动） ----------
+// ---------- 以下为原有业务逻辑（完全不变，仅保留函数名） ----------
 function switchMode(mode) {
     document.getElementById('practice-panel').style.display = mode==='practice'?'block':'none';
     document.getElementById('exam-panel').style.display = mode==='exam'?'block':'none';
@@ -517,7 +585,7 @@ function updateDisclaimerCountdown() {
 document.getElementById('disagreeBtn').addEventListener('click', function() { alert('您已拒绝免责声明，无法使用本系统。'); document.body.innerHTML = '<div style="text-align:center; margin-top:100px;"><h2>您已拒绝免责声明</h2><p>本系统无法继续使用。</p></div>'; });
 document.getElementById('agreeBtn').addEventListener('click', function() { if (agreeBtn.disabled) return; document.getElementById('disclaimerModal').style.display = 'none'; });
 
-// 启动系统
+// 启动
 updateDisclaimerCountdown();
 initSystem();
 </script>
