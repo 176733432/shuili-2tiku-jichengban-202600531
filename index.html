@@ -359,7 +359,7 @@ let totalFullQuestions = 0;
 let loadedFullQuestions = 0;
 let progressBarVisible = false;
 
-function updateProgressBar(loaded, total) {
+function updateProgressBar(bankId, loaded, total) {
     const bar = document.getElementById('loadProgressBar');
     const loadedSpan = document.getElementById('loadedCountDisplay');
     const totalSpan = document.getElementById('totalCountDisplay');
@@ -367,12 +367,21 @@ function updateProgressBar(loaded, total) {
         loadedSpan.innerText = loaded;
         totalSpan.innerText = total;
     }
+    // 更新标题显示当前加载的题库编号
+    const titleSpan = bar.querySelector('.bank-title');
+    if (!titleSpan) {
+        const span = document.createElement('span');
+        span.className = 'bank-title';
+        bar.insertBefore(span, bar.firstChild);
+    }
+    bar.querySelector('.bank-title').innerHTML = `📚 第${bankId}题库：`;
+    
     if (!progressBarVisible && loaded < total) {
         bar.classList.remove('hide');
         progressBarVisible = true;
     }
     if (loaded >= total && progressBarVisible) {
-        bar.innerHTML = `<span>✅ 全部题库加载完成 (${total} 道题)</span>`;
+        bar.innerHTML = `<span>✅ 第${bankId}题库加载完成 (${total} 道题)</span>`;
         setTimeout(() => {
             bar.classList.add('hide');
             progressBarVisible = false;
@@ -385,12 +394,10 @@ async function loadRemainingInBackground(bankId) {
     const current = bankCache[bankId];
     if (!current) return;
     
-    // 计算总题数（仅当前题库）
     totalFullQuestions = (full.single.length + full.multiple.length + full.judgment.length);
     loadedFullQuestions = (current.single.length + current.multiple.length + current.judgment.length);
-    updateProgressBar(loadedFullQuestions, totalFullQuestions);
+    updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);   // 传入 bankId
     
-    // 分批加载，每批100题，避免卡死
     const batchSize = 100;
     while (loadedFullQuestions < totalFullQuestions) {
         let added = 0;
@@ -411,9 +418,61 @@ async function loadRemainingInBackground(bankId) {
         }
         if (added === 0) break;
         loadedFullQuestions += added;
-        updateProgressBar(loadedFullQuestions, totalFullQuestions);
+        updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);   // 更新进度
         await new Promise(r => setTimeout(r, 30));
     }
+    
+    // 当前题库加载完成后，立即预加载另一个题库
+    if (loadedFullQuestions >= totalFullQuestions && fullBankMaster[bankId].single.length === full.single.length) {
+        // 确保另一个题库的完整数据已存在（full.json 已加载）
+        if (fullBankMaster && fullBankMaster[bankId === 1 ? 2 : 1] && 
+            fullBankMaster[bankId === 1 ? 2 : 1].single.length > 50) {
+            preloadOtherBank(bankId);
+        }
+    }
+}
+
+// 预加载另一个题库的所有题目（在后台静默完成）
+async function preloadOtherBank(currentId) {
+    const otherId = currentId === 1 ? 2 : 1;
+    // 如果另一个题库的缓存尚未建立，则先初始化部分数据
+    if (!bankCache[otherId]) {
+        bankCache[otherId] = getPartialBank(otherId);
+    }
+    const otherBank = bankCache[otherId];
+    const fullOther = fullBankMaster[otherId];
+    if (!fullOther) return;
+    
+    const totalOther = fullOther.single.length + fullOther.multiple.length + fullOther.judgment.length;
+    let loadedOther = otherBank.single.length + otherBank.multiple.length + otherBank.judgment.length;
+    
+    // 如果已经加载完毕，不再重复
+    if (loadedOther >= totalOther) return;
+    
+    // 分批加载另一个题库（不显示顶部进度条，静默进行）
+    const batchSize = 100;
+    while (loadedOther < totalOther) {
+        let added = 0;
+        if (otherBank.single.length < fullOther.single.length) {
+            const need = Math.min(batchSize, fullOther.single.length - otherBank.single.length);
+            otherBank.single.push(...fullOther.single.slice(otherBank.single.length, otherBank.single.length + need));
+            added += need;
+        }
+        if (added < batchSize && otherBank.multiple.length < fullOther.multiple.length) {
+            const need = Math.min(batchSize - added, fullOther.multiple.length - otherBank.multiple.length);
+            otherBank.multiple.push(...fullOther.multiple.slice(otherBank.multiple.length, otherBank.multiple.length + need));
+            added += need;
+        }
+        if (added < batchSize && otherBank.judgment.length < fullOther.judgment.length) {
+            const need = Math.min(batchSize - added, fullOther.judgment.length - otherBank.judgment.length);
+            otherBank.judgment.push(...fullOther.judgment.slice(otherBank.judgment.length, otherBank.judgment.length + need));
+            added += need;
+        }
+        if (added === 0) break;
+        loadedOther += added;
+        await new Promise(r => setTimeout(r, 30));
+    }
+    console.log(`第${otherId}题库已后台加载完成`);
 }
 
 // 主初始化（先快速加载 quick.json，再后台加载 full.json）
@@ -439,13 +498,24 @@ async function initSystem() {
         
         // 后台加载完整题库，并实时更新进度
         fetch(FULL_JSON_URL).then(res => res.json()).then(async fullData => {
-            fullBankMaster = fullData;
-            await saveToIndexedDB('full_bank', fullData);
-            console.log('完整题库已缓存');
-            if (currentBank) {
-                await loadRemainingInBackground(currentBankId);
-            }
-        }).catch(err => console.error('完整题库加载失败', err));
+    fullBankMaster = fullData;
+    await saveToIndexedDB('full_bank', fullData);
+    console.log('完整题库已缓存');
+    if (currentBank) {
+        await loadRemainingInBackground(currentBankId);
+    }
+    // === 新增：预加载另一个题库 ===
+    if (currentBank && bankCache[currentBankId]) {
+        const currentFull = fullBankMaster[currentBankId];
+        const currentLoaded = bankCache[currentBankId];
+        const isCurrentComplete = (currentLoaded.single.length === currentFull.single.length &&
+                                    currentLoaded.multiple.length === currentFull.multiple.length &&
+                                    currentLoaded.judgment.length === currentFull.judgment.length);
+        if (isCurrentComplete) {
+            preloadOtherBank(currentBankId);
+        }
+    }
+}).catch(err => console.error('完整题库加载失败', err));
     }
     
     bankCache[currentBankId] = getPartialBank(currentBankId);
@@ -453,6 +523,35 @@ async function initSystem() {
     bankProgress[currentBankId] = { totalBatches: 1, loadedBatches: 1 };
     
     updateProgress(100, '加载完成');
+    // 绑定登录界面的切换题库按钮（独立于登录状态）
+    const authSwitchBtn = document.getElementById('auth-switch-bank-btn');
+    if (authSwitchBtn) {
+        // 移除可能存在的旧事件，避免重复绑定
+        authSwitchBtn.onclick = null;
+        authSwitchBtn.onclick = async () => {
+            const newId = currentBankId === 1 ? 2 : 1;
+            if (newId === currentBankId) return;
+            currentBankId = newId;
+            // 重新加载新题库（优先使用部分数据）
+            currentBank = null;
+            currentBank = await loadBankData(currentBankId);
+            updateBankButtons();  // 更新两个按钮的文字
+            
+            // 如果练习面板已显示（试用模式或已登录），刷新当前题目
+            const practicePanel = document.getElementById('practice-panel');
+            if (practicePanel && practicePanel.style.display !== 'none') {
+                updatePracticeNav();
+                loadPracticeQuestions();
+                renderPracticeQuestion();
+            }
+            // 如果考试面板已显示，重新生成试卷
+            const examPanel = document.getElementById('exam-panel');
+            if (examPanel && examPanel.style.display !== 'none') {
+                generateExamPaper();
+                renderExamQuestion();
+            }
+        };
+    }
     setTimeout(() => {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 300);
