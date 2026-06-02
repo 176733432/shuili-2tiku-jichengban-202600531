@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>河北水利三类人员题库·双题库</title>
+    <title>河北水利三类人员题库·双题库（考试计时+随机抽题）</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Microsoft YaHei', Arial, sans-serif; line-height: 1.6; background-color: #f5f5f5; color: #333; padding: 20px; }
@@ -37,7 +37,9 @@
         .message.error { background: #f8d7da; color: #721c24; display: block; }
         .user-info-bar { background: #e3f2fd; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .logout-btn { background: #f44336; color: white; border: none; padding: 6px 18px; border-radius: 20px; cursor: pointer; }
-        .trial-banner { background: linear-gradient(90deg, #ff9800, #ffc107); color: white; text-align: center; padding: 10px; border-radius: 20px; margin-bottom: 15px; font-weight: bold; }
+        .trial-banner { background: linear-gradient(90deg, #ff9800, #ffc107); color: white; text-align: center; padding: 10px; border-radius: 20px; margin-bottom: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .btn-register-now { background: #4CAF50; color: white; border: none; padding: 6px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; margin-left: 10px; }
+        .btn-register-now:hover { background: #45a049; }
         .init-loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; backdrop-filter: blur(4px); }
         .init-loading-box { background: white; padding: 35px 50px; border-radius: 24px; text-align: center; box-shadow: 0 20px 35px rgba(0,0,0,0.2); min-width: 320px; }
         .progress-bar-container { width: 100%; height: 12px; background-color: #e0e0e0; border-radius: 20px; margin: 20px 0; overflow: hidden; }
@@ -73,7 +75,7 @@
         .wrong-code-input-container { margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .wrong-code-input { padding: 10px; flex: 2; min-width: 200px; border: 1px solid #ddd; border-radius: 6px; }
         .refresh-btn { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        .exam-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .exam-header { display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; }
         .type-notice { color: #d32f2f; font-size: 14px; text-align: center; margin: 10px 0; }
         .option-exam { padding: 12px 15px; margin-bottom: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; display: flex; align-items: center; }
         .option-exam:hover { background: #f0f0f0; }
@@ -114,11 +116,21 @@
             border-radius: 20px;
             margin-left: 8px;
         }
+        /* 考试计时器样式 */
+        .exam-timer {
+            background: #333;
+            color: #ff9800;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 18px;
+        }
         @media (max-width: 700px) { .nav-row { flex-wrap: wrap; } }
     </style>
 </head>
 <body>
-<!-- 实时加载进度提示条（初始隐藏，加载完整题库时显示） -->
+<!-- 实时加载进度提示条 -->
 <div id="loadProgressBar" class="loading-progress-bar hide" onclick="this.classList.add('hide')">
     <span>📥 后台加载中...</span> <span id="loadedCountDisplay">0</span> / <span id="totalCountDisplay">0</span> 道题
 </div>
@@ -188,7 +200,7 @@
         <div class="form-group"><label>库码</label><input type="password" id="login-lib-code" required placeholder="请输入库码"></div>
         <button type="button" class="btn-switch" id="auth-switch-bank-btn">切换题库 (当前：第1题库)</button>
         <button type="submit" class="btn-primary">登录</button>
-        <button type="button" class="btn-secondary" onclick="startTrial()">免注册试用 (5题)</button>
+        <button type="button" class="btn-secondary" onclick="startTrial()">免注册试用 (100+20+20题)</button>
         <button type="button" class="btn-info" onclick="window.open('help.html', '_blank')">📖 使用说明</button>
         <div id="login-message" class="message"></div>
     </form>
@@ -214,13 +226,16 @@
         <button class="btn-info" id="donateBtnMain" style="background:#ff9800; padding:6px 18px; font-size:14px; width:auto; margin-left:10px;">❤️ 捐助作者</button>
         <button class="btn-switch" id="main-switch-bank-btn" style="padding:6px 18px; font-size:14px; width:auto;">切换题库</button>
     </div>
-    <div id="trial-notice" class="trial-banner" style="display:none;">🎯 试用模式 · 还可作答 <span id="trial-remaining">5</span> 题</div>
+    <div id="trial-notice" class="trial-banner" style="display:none;">
+        <span>🎯 试用模式 · 固定题目(单选100/多选20/判断20) · 更多功能请注册</span>
+        <button id="gotoRegisterBtn" class="btn-register-now">立即注册 ➡</button>
+    </div>
     <div class="mode-tabs">
         <button class="mode-tab active" data-mode="practice">📘 练习模式</button>
         <button class="mode-tab" data-mode="exam">📝 考试模式</button>
     </div>
     <div id="practice-panel" class="practice-panel">
-        <div class="wrong-code-input-container">
+        <div class="wrong-code-input-container" id="wrongCodeContainer" style="display: flex;">
             <label>错题库码：</label>
             <input type="text" id="wrong-code-input" class="wrong-code-input" placeholder="输入码">
             <button class="refresh-btn" id="refresh-wrong-btn">刷新错题库</button>
@@ -240,7 +255,11 @@
         <div class="navigation-buttons"><button class="nav-btn" id="practice-prev" disabled>上一题</button><button class="nav-btn" id="practice-confirm">确认</button><button class="nav-btn" id="practice-next">下一题</button></div>
     </div>
     <div id="exam-panel" class="exam-panel">
-        <div class="exam-header"><div>📌 题目 <span id="exam-current">1</span>/<span id="exam-total">140</span></div><div>✅ 已答 <span id="exam-answered">0</span>/<span id="exam-total-count">140</span></div></div>
+        <div class="exam-header">
+            <div>📌 题目 <span id="exam-current">1</span>/<span id="exam-total">140</span></div>
+            <div>✅ 已答 <span id="exam-answered">0</span>/<span id="exam-total-count">140</span></div>
+            <div>⏱️ 剩余时间: <span id="exam-timer-display" class="exam-timer">02:30:00</span></div>
+        </div>
         <div class="navigation"><button class="nav-button" id="exam-single-btn">单选题</button><button class="nav-button" id="exam-multi-btn">多选题</button><button class="nav-button" id="exam-judge-btn">判断题</button><button class="nav-button" id="exam-unanswered-btn">未答题</button><button class="nav-button" id="exam-submit-btn">交卷</button><button class="nav-button" id="exam-newtest-btn">重新抽题</button><button class="nav-button" id="exam-wrong-btn" style="background:#ff9800;">错题回看</button></div>
         <div id="exam-type-notice" class="type-notice"></div><div class="question-container"><div id="exam-q-title" class="question-title"></div><div id="exam-options-container"></div></div>
         <div class="bottom-navigation"><button class="nav-btn" id="exam-prev-btn">上一题</button><button class="nav-btn" id="exam-confirm-btn">确认</button><button class="nav-btn" id="exam-next-btn">下一题</button></div>
@@ -254,7 +273,7 @@
 <div id="backup-progress-modal" class="modal"><div class="modal-content" style="text-align:center;"><h3>错题备份中</h3><p id="backup-progress-text">正在备份到云端...</p><progress id="backup-progress-bar" value="0" max="100" style="width:100%;"></progress></div></div>
 
 <script>
-// ==================== 渐进加载 + 实时进度条 ====================
+// ==================== 配置和全局变量 ====================
 const QUICK_JSON_URL = 'quick.json';
 const FULL_JSON_URL = 'full.json';
 const DB_NAME = 'QuestionBankDB';
@@ -269,7 +288,6 @@ let bankProgress = {};
 
 let currentUser = null;
 let isTrialMode = false;
-let trialRemaining = 5;
 let wrongCode = '';
 let wrongItems = [];
 let practiceMode = 'all';
@@ -280,13 +298,18 @@ let selectedOptions = [];
 let examData = { questions: [], userAnswers: {}, currentIndex: 0, filterType: 'all', answeredCount: 0, confirmed: {}, submitted: false, scores: { single:0, multiple:0, judgment:0 } };
 let examWrongDetails = [];
 
+// 考试计时相关
+let examTimerInterval = null;
+let examRemainingSeconds = 9000; // 2小时30分 = 9000秒
+let examTimeUp = false;
+
 const CLOUD = {
     REG_KEY: atob('WkNYWDIwMDIwMzA4'), USER_PREFIX: atob('U0xaQ0s='), ADMIN_EMAIL: atob('NjcwNjU2MjE2QHFxLmNvbQ=='),
     API_UPDATE: atob('aHR0cHM6Ly9hcGkudGV4dGRiLm9ubGluZS91cGRhdGUv'),
     API_READ: atob('aHR0cHM6Ly90ZXh0ZGIub25saW5lLw=='), TRIAL_LIMIT: 5
 };
 
-// 辅助函数（保持原有）
+// ==================== 辅助函数 ====================
 function getUserKey(libCode) { return CLOUD.USER_PREFIX + libCode; }
 function getWrongCloudKey() { return wrongCode ? wrongCode + (currentBankId===1?'01':'02') : ''; }
 function getWrongLocalKey() { return 'local_wrong_' + getWrongCloudKey(); }
@@ -367,7 +390,6 @@ function updateProgressBar(bankId, loaded, total) {
         loadedSpan.innerText = loaded;
         totalSpan.innerText = total;
     }
-    // 更新标题显示当前加载的题库编号
     const titleSpan = bar.querySelector('.bank-title');
     if (!titleSpan) {
         const span = document.createElement('span');
@@ -396,7 +418,7 @@ async function loadRemainingInBackground(bankId) {
     
     totalFullQuestions = (full.single.length + full.multiple.length + full.judgment.length);
     loadedFullQuestions = (current.single.length + current.multiple.length + current.judgment.length);
-    updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);   // 传入 bankId
+    updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);
     
     const batchSize = 100;
     while (loadedFullQuestions < totalFullQuestions) {
@@ -418,13 +440,12 @@ async function loadRemainingInBackground(bankId) {
         }
         if (added === 0) break;
         loadedFullQuestions += added;
-        updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);   // 更新进度
+        updateProgressBar(bankId, loadedFullQuestions, totalFullQuestions);
         await new Promise(r => setTimeout(r, 30));
     }
     
     // 当前题库加载完成后，立即预加载另一个题库
     if (loadedFullQuestions >= totalFullQuestions && fullBankMaster[bankId].single.length === full.single.length) {
-        // 确保另一个题库的完整数据已存在（full.json 已加载）
         if (fullBankMaster && fullBankMaster[bankId === 1 ? 2 : 1] && 
             fullBankMaster[bankId === 1 ? 2 : 1].single.length > 50) {
             preloadOtherBank(bankId);
@@ -435,7 +456,6 @@ async function loadRemainingInBackground(bankId) {
 // 预加载另一个题库的所有题目（在后台静默完成）
 async function preloadOtherBank(currentId) {
     const otherId = currentId === 1 ? 2 : 1;
-    // 如果另一个题库的缓存尚未建立，则先初始化部分数据
     if (!bankCache[otherId]) {
         bankCache[otherId] = getPartialBank(otherId);
     }
@@ -445,11 +465,8 @@ async function preloadOtherBank(currentId) {
     
     const totalOther = fullOther.single.length + fullOther.multiple.length + fullOther.judgment.length;
     let loadedOther = otherBank.single.length + otherBank.multiple.length + otherBank.judgment.length;
-    
-    // 如果已经加载完毕，不再重复
     if (loadedOther >= totalOther) return;
     
-    // 分批加载另一个题库（不显示顶部进度条，静默进行）
     const batchSize = 100;
     while (loadedOther < totalOther) {
         let added = 0;
@@ -475,7 +492,484 @@ async function preloadOtherBank(currentId) {
     console.log(`第${otherId}题库已后台加载完成`);
 }
 
-// 主初始化（先快速加载 quick.json，再后台加载 full.json）
+// 获取试用模式下的固定题库（题库1的前100单选、前20多选、前20判断）
+function getTrialBank() {
+    if (!fullBankMaster || !fullBankMaster["1"]) return null;
+    const full1 = fullBankMaster["1"];
+    return {
+        single: full1.single.slice(0, 100),
+        multiple: full1.multiple.slice(0, 20),
+        judgment: full1.judgment.slice(0, 20)
+    };
+}
+// ==================== 修复：正常用户考试随机抽题 ====================
+// 辅助函数：随机打乱数组（Fisher-Yates）
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// 从完整题库中随机抽取指定数量的题目（不重复）
+function randomSample(arr, n) {
+    if (n >= arr.length) return shuffleArray([...arr]);
+    // 随机取 n 个不重复元素
+    const shuffled = shuffleArray([...arr]);
+    return shuffled.slice(0, n);
+}
+
+// 生成考试试卷（非试用模式：随机抽取；试用模式：固定前N题）
+function generateExamPaper() {
+    if (!currentBank) return;
+    
+    // 重置考试相关数据
+    examData = { 
+        questions: [], 
+        userAnswers: {}, 
+        currentIndex: 0, 
+        filterType: 'all', 
+        answeredCount: 0, 
+        confirmed: {}, 
+        submitted: false, 
+        scores: { single:0, multiple:0, judgment:0 } 
+    };
+    examWrongDetails = [];
+    
+    if (isTrialMode) {
+        // 试用模式：使用固定范围（前100单选、前20多选、前20判断）
+        const trialBank = getTrialBank();
+        if (!trialBank) return;
+        const singles = [...trialBank.single];
+        const multis = [...trialBank.multiple];
+        const judges = [...trialBank.judgment];
+        singles.forEach((q,i) => { q.type='single'; q.questionNumber=i+1; examData.questions.push(q); });
+        multis.forEach((q,i) => { q.type='multiple'; q.questionNumber=singles.length+i+1; examData.questions.push(q); });
+        judges.forEach((q,i) => { q.type='judgment'; q.questionNumber=singles.length+multis.length+i+1; examData.questions.push(q); });
+    } else {
+        // 正常登录用户：从完整题库（fullBankMaster）中随机抽取
+        const full = fullBankMaster[currentBankId];
+        if (!full) return;
+        // 随机抽取单选题100道、多选题20道、判断题20道
+        const singles = randomSample(full.single, 100);
+        const multis = randomSample(full.multiple, 20);
+        const judges = randomSample(full.judgment, 20);
+        
+        singles.forEach((q,i) => { q.type='single'; q.questionNumber=i+1; examData.questions.push(q); });
+        multis.forEach((q,i) => { q.type='multiple'; q.questionNumber=singles.length+i+1; examData.questions.push(q); });
+        judges.forEach((q,i) => { q.type='judgment'; q.questionNumber=singles.length+multis.length+i+1; examData.questions.push(q); });
+    }
+    
+    renderExamQuestion();
+    resetExamTimer();
+}
+
+// 考试计时器
+function startExamTimer() {
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    examTimerInterval = setInterval(() => {
+        if (examData.submitted || examTimeUp) return;
+        if (examRemainingSeconds <= 0) {
+            clearInterval(examTimerInterval);
+            examTimeUp = true;
+            alert('考试时间已到，系统将自动交卷！');
+            submitExam();
+        } else {
+            examRemainingSeconds--;
+            const hours = Math.floor(examRemainingSeconds / 3600);
+            const minutes = Math.floor((examRemainingSeconds % 3600) / 60);
+            const seconds = examRemainingSeconds % 60;
+            const timeStr = `${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+            document.getElementById('exam-timer-display').innerText = timeStr;
+        }
+    }, 1000);
+}
+
+function resetExamTimer() {
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    examRemainingSeconds = 9000;
+    examTimeUp = false;
+    document.getElementById('exam-timer-display').innerText = '02:30:00';
+    startExamTimer();
+}
+
+function renderExamQuestion() {
+    const qs = getFilteredExamQuestions();
+    if(qs.length===0) return;
+    const q = qs[examData.currentIndex];
+    document.getElementById('exam-q-title').textContent = `${q.questionNumber}. ${q.question}`;
+    const cont = document.getElementById('exam-options-container');
+    cont.innerHTML = '';
+    q.options.forEach((opt,i) => {
+        const div = document.createElement('div');
+        div.className = 'option-exam';
+        const letter = String.fromCharCode(65+i);
+        div.dataset.letter = letter;
+        div.innerHTML = `<span class="option-letter">${letter}</span>${opt}`;
+        div.onclick = () => {
+            if (examData.submitted || examTimeUp) {
+                alert('考试已结束，无法作答');
+                return;
+            }
+            handleExamOptionClick(letter, q);
+        };
+        if(examData.userAnswers[q.questionNumber]) {
+            const ans = examData.userAnswers[q.questionNumber];
+            if(q.type==='multiple') {
+                if(ans.split(',').includes(letter)) div.classList.add('selected');
+            } else {
+                if(ans===letter) div.classList.add('selected');
+            }
+        }
+        cont.appendChild(div);
+    });
+    document.getElementById('exam-current').textContent = q.questionNumber;
+    document.getElementById('exam-total').textContent = examData.questions.length;
+    document.getElementById('exam-answered').textContent = examData.answeredCount;
+    document.getElementById('exam-total-count').textContent = examData.questions.length;
+    document.getElementById('exam-type-notice').textContent = {'single':'单选题0.5分','multiple':'多选题2分(漏选0.5/个)','judgment':'判断题0.5分'}[q.type]||'';
+}
+
+function handleExamOptionClick(letter, q) {
+    if(examData.submitted || examTimeUp) return;
+    if(q.type === 'multiple') {
+        let cur = examData.userAnswers[q.questionNumber] || '';
+        let arr = cur ? cur.split(',') : [];
+        if(arr.includes(letter)) arr = arr.filter(l=>l!==letter);
+        else arr.push(letter);
+        examData.userAnswers[q.questionNumber] = arr.join(',');
+    } else {
+        examData.userAnswers[q.questionNumber] = letter;
+    }
+    examData.answeredCount = Object.keys(examData.userAnswers).length;
+    renderExamQuestion();
+}
+
+async function submitExam() {
+    if (examData.submitted) return;
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    examData.submitted = true;
+    examWrongDetails = [];
+    for(const q of examData.questions) {
+        const ua = examData.userAnswers[q.questionNumber];
+        if(!ua) continue;
+        let correct = false;
+        if(q.type === 'multiple') {
+            const uArr = ua.split(',');
+            const cArr = q.answer;
+            const full = uArr.length===cArr.length && uArr.every(v=>cArr.includes(v));
+            if(full) {
+                examData.scores.multiple += 2;
+                correct = true;
+            } else {
+                const hasWrong = uArr.some(v=>!cArr.includes(v));
+                if(!hasWrong) {
+                    let sc = uArr.length*0.5;
+                    if(sc>1.5) sc=1.5;
+                    examData.scores.multiple += sc;
+                }
+            }
+        } else {
+            if(ua === q.answer) {
+                correct = true;
+                if(q.type==='single') examData.scores.single+=0.5;
+                else examData.scores.judgment+=0.5;
+            }
+        }
+        if(!correct) {
+            examWrongDetails.push({ 
+                questionNumber: q.questionNumber, 
+                title: q.question, 
+                type: q.type, 
+                userAnswer: ua, 
+                correctAnswer: Array.isArray(q.answer) ? q.answer.join(',') : q.answer, 
+                correctAnswerText: q.type==='multiple' ? q.answer.map(a=>q.options[a.charCodeAt(0)-65]).join('；') : q.options[q.answer.charCodeAt(0)-65] 
+            });
+            if(!isTrialMode && wrongCode) await addWrongItem(q);
+        }
+    }
+    const total = examData.scores.single + examData.scores.multiple + examData.scores.judgment;
+    document.getElementById('result-details').innerHTML = `<p>单选:${examData.scores.single.toFixed(1)} 多选:${examData.scores.multiple.toFixed(1)} 判断:${examData.scores.judgment.toFixed(1)}</p><h3>总分:${total.toFixed(1)}</h3>`;
+    document.getElementById('result-modal').style.display = 'block';
+}
+
+function examConfirm() {
+    if (examTimeUp) { alert('考试已结束'); return; }
+    const qs = getFilteredExamQuestions();
+    const q = qs[examData.currentIndex];
+    if(!examData.userAnswers[q.questionNumber]) { alert('请选择答案'); return; }
+    examData.confirmed[q.questionNumber] = true;
+    renderExamQuestion();
+}
+
+function initExam() {
+    document.getElementById('exam-single-btn').onclick = () => { examData.filterType='single'; examData.currentIndex=0; renderExamQuestion(); };
+    document.getElementById('exam-multi-btn').onclick = () => { examData.filterType='multiple'; examData.currentIndex=0; renderExamQuestion(); };
+    document.getElementById('exam-judge-btn').onclick = () => { examData.filterType='judgment'; examData.currentIndex=0; renderExamQuestion(); };
+    document.getElementById('exam-unanswered-btn').onclick = () => { examData.filterType='unanswered'; examData.currentIndex=0; renderExamQuestion(); };
+    document.getElementById('exam-prev-btn').onclick = () => { if(examData.currentIndex>0){ examData.currentIndex--; renderExamQuestion(); } };
+    document.getElementById('exam-next-btn').onclick = () => { const qs = getFilteredExamQuestions(); if(examData.currentIndex < qs.length-1) { examData.currentIndex++; renderExamQuestion(); } };
+    document.getElementById('exam-confirm-btn').onclick = examConfirm;
+    document.getElementById('exam-submit-btn').onclick = () => { if(!examData.submitted) document.getElementById('submit-confirm-modal').style.display='block'; };
+    document.getElementById('exam-newtest-btn').onclick = () => { document.getElementById('confirm-modal').style.display='block'; };
+    document.getElementById('confirm-yes').onclick = () => { closeModal('confirm-modal'); generateExamPaper(); };
+    document.getElementById('confirm-no').onclick = () => closeModal('confirm-modal');
+    document.getElementById('submit-yes').onclick = () => { closeModal('submit-confirm-modal'); submitExam(); };
+    document.getElementById('submit-no').onclick = () => closeModal('submit-confirm-modal');
+    document.getElementById('restart-exam-btn').onclick = () => { closeModal('result-modal'); generateExamPaper(); };
+    document.getElementById('exam-wrong-btn').onclick = () => showExamWrongModal();
+    document.getElementById('result-wrong-btn').onclick = () => showExamWrongModal();
+    generateExamPaper();
+}
+
+// ==================== 练习模式相关 ====================
+function loadPracticeQuestions() {
+    if(!currentBank) return;
+    if (isTrialMode && practiceMode === 'wrong') {
+        alert('试用模式下不支持错题库功能，请注册后使用。');
+        practiceMode = 'all';
+        updatePracticeNav();
+    }
+    practiceQuestions = practiceMode==='all' ? [...currentBank[practiceType]] : getWrongQuestionsByType(practiceType);
+    practiceIndex = 0;
+    renderPracticeQuestion();
+}
+
+function renderPracticeQuestion() {
+    if(!currentBank || practiceQuestions.length===0) {
+        document.getElementById('practice-q-num').textContent = '暂无题目';
+        document.getElementById('practice-q-text').textContent = '当前题库没有题目';
+        document.getElementById('practice-options').innerHTML = '';
+        document.getElementById('practice-feedback').style.display = 'none';
+        document.getElementById('practice-progress').textContent = '题目 0/0';
+        document.getElementById('practice-prev').disabled = true;
+        document.getElementById('practice-next').disabled = true;
+        return;
+    }
+    if(practiceIndex >= practiceQuestions.length) practiceIndex = 0;
+    const q = practiceQuestions[practiceIndex];
+    document.getElementById('practice-q-num').textContent = `题目 ${practiceIndex+1}`;
+    document.getElementById('practice-q-text').textContent = q.question;
+    const opts = document.getElementById('practice-options');
+    opts.innerHTML = '';
+    q.options.forEach((opt, i) => {
+        const li = document.createElement('li');
+        li.textContent = opt;
+        li.dataset.value = String.fromCharCode(65+i);
+        li.addEventListener('click', () => selectPracticeOption(li, q.type));
+        opts.appendChild(li);
+    });
+    selectedOptions = [];
+    document.getElementById('practice-feedback').style.display = 'none';
+    document.getElementById('practice-prev').disabled = practiceIndex === 0;
+    document.getElementById('practice-next').disabled = practiceIndex === practiceQuestions.length-1;
+    document.getElementById('practice-progress').textContent = `题目 ${practiceIndex+1}/${practiceQuestions.length}`;
+    document.getElementById('practice-jump').max = practiceQuestions.length;
+    document.getElementById('practice-jump').value = practiceIndex+1;
+}
+
+function selectPracticeOption(el, type) {
+    const val = el.dataset.value;
+    if(type === 'multiple') {
+        if(selectedOptions.includes(val)) {
+            selectedOptions = selectedOptions.filter(v=>v!==val);
+            el.classList.remove('selected');
+        } else {
+            selectedOptions.push(val);
+            el.classList.add('selected');
+        }
+    } else {
+        document.querySelectorAll('#practice-options li').forEach(li => li.classList.remove('selected'));
+        selectedOptions = [val];
+        el.classList.add('selected');
+    }
+}
+
+async function practiceConfirm() {
+    if(isTrialMode && practiceIndex >= practiceQuestions.length) {
+        alert('使用更多，请正式注册。');
+        switchAuthTab('register');
+        return;
+    }
+    if(selectedOptions.length === 0) { alert('请选择答案'); return; }
+    const q = practiceQuestions[practiceIndex];
+    let correct = false;
+    if(q.type === 'multiple') correct = selectedOptions.length === q.answer.length && selectedOptions.every(v => q.answer.includes(v)) && q.answer.every(a => selectedOptions.includes(a));
+    else correct = selectedOptions[0] === q.answer;
+    const fb = document.getElementById('practice-feedback');
+    fb.style.display = 'block';
+    fb.className = 'feedback ' + (correct?'correct':'incorrect');
+    fb.textContent = correct ? '回答正确！' : `错误！正确答案：${q.type==='multiple'?q.answer.join('、'):q.answer}`;
+    if(correct && practiceMode==='wrong' && !isTrialMode && wrongCode) {
+        await removeWrongItem(q);
+        practiceQuestions = getWrongQuestionsByType(practiceType);
+        if(practiceQuestions.length === 0) {
+            alert('该题型错题已全部掌握');
+            practiceMode = 'all';
+            updatePracticeNav();
+            loadPracticeQuestions();
+        } else {
+            if(practiceIndex >= practiceQuestions.length) practiceIndex = practiceQuestions.length-1;
+            renderPracticeQuestion();
+        }
+    } else if(!correct && practiceMode==='all' && !isTrialMode && wrongCode) {
+        await addWrongItem(q);
+    }
+}
+
+function handlePracticeNavigate(delta) {
+    if (isTrialMode) {
+        const total = practiceQuestions.length;
+        const newIndex = practiceIndex + delta;
+        if (newIndex < 0 || newIndex >= total) {
+            alert('使用更多，请正式注册。');
+            switchAuthTab('register');
+            return false;
+        }
+        practiceIndex = newIndex;
+        renderPracticeQuestion();
+        return true;
+    } else {
+        if (delta === -1 && practiceIndex > 0) practiceIndex--;
+        else if (delta === 1 && practiceIndex < practiceQuestions.length-1) practiceIndex++;
+        renderPracticeQuestion();
+        return true;
+    }
+}
+
+// 绑定练习导航按钮
+document.getElementById('practice-prev').onclick = () => handlePracticeNavigate(-1);
+document.getElementById('practice-next').onclick = () => handlePracticeNavigate(1);
+document.getElementById('practice-jump-btn').onclick = () => {
+    let idx = parseInt(document.getElementById('practice-jump').value)-1;
+    if (isTrialMode && (idx < 0 || idx >= practiceQuestions.length)) {
+        alert('使用更多，请正式注册。');
+        switchAuthTab('register');
+        return;
+    }
+    if(idx>=0 && idx<practiceQuestions.length) { practiceIndex = idx; renderPracticeQuestion(); }
+};
+
+function initPractice() {
+    document.getElementById('all-questions-btn').onclick = () => { practiceMode='all'; updatePracticeNav(); loadPracticeQuestions(); };
+    document.getElementById('wrong-questions-btn').onclick = () => { if(isTrialMode) return alert('试用不支持错题库'); practiceMode='wrong'; updatePracticeNav(); loadPracticeQuestions(); };
+    document.querySelectorAll('[data-type]').forEach(b => b.addEventListener('click', function(){ practiceType = this.dataset.type; updatePracticeNav(); loadPracticeQuestions(); }));
+    document.getElementById('refresh-wrong-btn').onclick = async () => { await syncWrongOnLogin(); if(practiceMode==='wrong') loadPracticeQuestions(); };
+    document.getElementById('wrong-code-input').addEventListener('change', async function(){ if(isTrialMode||!currentUser) { wrongCode=this.value; await syncWrongOnLogin(); } });
+    document.getElementById('export-wrong-btn').onclick = exportWrongItems;
+    document.getElementById('import-wrong-btn').onclick = () => document.getElementById('import-file-input').click();
+    document.getElementById('import-file-input').onchange = function(e) { if(e.target.files.length) { importWrongItems(e.target.files[0]); e.target.value = ''; } };
+}
+
+// ==================== 界面切换与用户登录 ====================
+function updatePracticeNav() {
+    document.getElementById('all-questions-btn').classList.toggle('active', practiceMode==='all');
+    document.getElementById('wrong-questions-btn').classList.toggle('active', practiceMode==='wrong');
+    document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type===practiceType));
+    document.getElementById('current-info-text').textContent = `当前作答：${practiceMode==='all'?'全部题库':'错题库'} ${practiceType==='single'?'单选题':practiceType==='multiple'?'多选题':'判断题'} (第${currentBankId}题库)`;
+}
+
+function switchMode(mode) {
+    document.getElementById('practice-panel').style.display = mode==='practice'?'block':'none';
+    document.getElementById('exam-panel').style.display = mode==='exam'?'block':'none';
+    document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===mode));
+    if(mode==='exam') renderExamQuestion();
+}
+
+function getFilteredExamQuestions() {
+    let qs = examData.questions;
+    if(examData.filterType==='single') qs = qs.filter(q=>q.type==='single');
+    else if(examData.filterType==='multiple') qs = qs.filter(q=>q.type==='multiple');
+    else if(examData.filterType==='judgment') qs = qs.filter(q=>q.type==='judgment');
+    else if(examData.filterType==='unanswered') qs = qs.filter(q=>!examData.userAnswers[q.questionNumber]);
+    return qs;
+}
+
+function showExamWrongModal() {
+    document.getElementById('wrong-count').textContent = examWrongDetails.length;
+    document.getElementById('wrong-list').innerHTML = examWrongDetails.map(w => `<div class="wrong-question-card"><div><b>${w.questionNumber}. [${w.type==='single'?'单选':'多选'}] ${w.title}</b></div><div style="color:#d32f2f;">您的答案：${w.userAnswer}</div><div style="color:#2e7d32;">正确答案：${w.correctAnswer} (${w.correctAnswerText})</div></div>`).join('');
+    document.getElementById('wrong-modal').style.display = 'block';
+}
+
+window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
+window.switchAuthTab = function(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f=>f.classList.remove('active'));
+    if(tab==='login') {
+        document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+        document.getElementById('login-form').classList.add('active');
+    } else {
+        document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+        document.getElementById('register-form').classList.add('active');
+    }
+};
+
+function showMsg(id,msg,type){ const el=document.getElementById(id+'-message'); el.textContent=msg; el.className='message '+type; setTimeout(()=>el.className='message',5000); }
+
+window.handleRegister = async function(e) { 
+    e.preventDefault(); 
+    const email=document.getElementById('reg-email').value.trim(); 
+    const phone=document.getElementById('reg-phone').value.trim(); 
+    const pwd=document.getElementById('reg-password').value; 
+    const libCode=document.getElementById('reg-lib-code').value.trim(); 
+    if(pwd!==document.getElementById('reg-confirm').value) return showMsg('register','密码不一致','error'); 
+    if(!/^1[3-9]\d{9}$/.test(phone)) return showMsg('register','手机号无效','error'); 
+    if(!libCode) return showMsg('register','请输入库码','error'); 
+    try { 
+        let regs=[]; 
+        try{ const r=await fetch(CLOUD.API_READ+CLOUD.REG_KEY); if(r.ok) regs=await r.json(); }catch(e){} 
+        if(regs.find(r=>r.email===email)) return showMsg('register','邮箱已申请','error'); 
+        regs.push({email,phone,password:pwd,libCode,registerTime:new Date().toISOString(),status:'pending'}); 
+        await fetch(CLOUD.API_UPDATE, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`key=${CLOUD.REG_KEY}&value=${encodeURIComponent(JSON.stringify(regs))}`}); 
+        window.location.href=`mailto:${CLOUD.ADMIN_EMAIL}?subject=新注册&body=邮箱:${email} 手机:${phone} 库码:${libCode}`; 
+        showMsg('register','申请已提交','success'); 
+        setTimeout(()=>switchAuthTab('login'),3000); 
+    } catch(e) { showMsg('register','网络错误','error'); } 
+};
+
+window.handleLogin = async function(e) { 
+    e.preventDefault(); 
+    const email=document.getElementById('login-email').value.trim(); 
+    const pwd=document.getElementById('login-password').value; 
+    const libCode=document.getElementById('login-lib-code').value.trim(); 
+    if(!libCode) return showMsg('login','请输入库码','error'); 
+    const userKey=getUserKey(libCode); 
+    try { 
+        const resp=await fetch(CLOUD.API_READ+userKey); 
+        if(!resp.ok) return showMsg('login','用户库读取失败','error'); 
+        const text=await resp.text(); 
+        if(!text) return showMsg('login','用户不存在','error'); 
+        const users=JSON.parse(text); 
+        const user=users.find(u=>u.email===email && u.password===pwd); 
+        if(user) { 
+            currentUser=user; 
+            isTrialMode=false; 
+            localStorage.setItem('slzck_user',JSON.stringify(user)); 
+            await enterApp(); 
+        } else showMsg('login','账号或密码错误','error'); 
+    } catch(e) { showMsg('login','网络错误','error'); } 
+};
+
+window.startTrial = async function() {
+    isTrialMode = true;
+    currentUser = null;
+    localStorage.removeItem('slzck_user');
+    // 确保 fullBankMaster 已加载
+    if (!fullBankMaster) {
+        await new Promise(resolve => {
+            const check = setInterval(() => {
+                if (fullBankMaster) {
+                    clearInterval(check);
+                    resolve();
+                }
+            }, 100);
+        });
+    }
+    await enterApp();
+};
+
+// 主初始化函数（已在第一部分定义，这里补全）
 async function initSystem() {
     const overlay = document.getElementById('initLoadingOverlay');
     updateProgress(5, '检查本地缓存...');
@@ -496,55 +990,79 @@ async function initSystem() {
         fullBankMaster = quickData;
         updateProgress(50, '快速启动包已就绪');
         
-        // 后台加载完整题库，并实时更新进度
         fetch(FULL_JSON_URL).then(res => res.json()).then(async fullData => {
-    fullBankMaster = fullData;
-    await saveToIndexedDB('full_bank', fullData);
-    console.log('完整题库已缓存');
-    if (currentBank) {
-        await loadRemainingInBackground(currentBankId);
-    }
-    // === 新增：预加载另一个题库 ===
-    if (currentBank && bankCache[currentBankId]) {
-        const currentFull = fullBankMaster[currentBankId];
-        const currentLoaded = bankCache[currentBankId];
-        const isCurrentComplete = (currentLoaded.single.length === currentFull.single.length &&
-                                    currentLoaded.multiple.length === currentFull.multiple.length &&
-                                    currentLoaded.judgment.length === currentFull.judgment.length);
-        if (isCurrentComplete) {
-            preloadOtherBank(currentBankId);
-        }
-    }
-}).catch(err => console.error('完整题库加载失败', err));
+            fullBankMaster = fullData;
+            await saveToIndexedDB('full_bank', fullData);
+            console.log('完整题库已缓存');
+            if (!isTrialMode && currentBank) {
+                await loadRemainingInBackground(currentBankId);
+                if (bankCache[currentBankId]) {
+                    const currentFull = fullBankMaster[currentBankId];
+                    const currentLoaded = bankCache[currentBankId];
+                    const isCurrentComplete = (currentLoaded.single.length === currentFull.single.length &&
+                                                currentLoaded.multiple.length === currentFull.multiple.length &&
+                                                currentLoaded.judgment.length === currentFull.judgment.length);
+                    if (isCurrentComplete) preloadOtherBank(currentBankId);
+                }
+            }
+        }).catch(err => console.error('完整题库加载失败', err));
     }
     
-    bankCache[currentBankId] = getPartialBank(currentBankId);
-    currentBank = bankCache[currentBankId];
+    // 根据试用模式设置 currentBank
+    if (isTrialMode) {
+        // 等待题库数据足够
+        const waitForEnoughData = () => {
+            return new Promise((resolve) => {
+                if (fullBankMaster && fullBankMaster["1"] && fullBankMaster["1"].single.length >= 100) {
+                    resolve();
+                } else {
+                    const checkInterval = setInterval(() => {
+                        if (fullBankMaster && fullBankMaster["1"] && fullBankMaster["1"].single.length >= 100) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 200);
+                }
+            });
+        };
+        await waitForEnoughData();
+        const trialBank = getTrialBank();
+        if (trialBank) {
+            currentBank = trialBank;
+            bankCache[1] = trialBank;
+        } else {
+            alert('试用题库初始化失败，请刷新重试');
+            return;
+        }
+    } else {
+        bankCache[currentBankId] = getPartialBank(currentBankId);
+        currentBank = bankCache[currentBankId];
+    }
     bankProgress[currentBankId] = { totalBatches: 1, loadedBatches: 1 };
     
     updateProgress(100, '加载完成');
-    // 绑定登录界面的切换题库按钮（独立于登录状态）
+    
+    // 绑定登录界面切换题库按钮
     const authSwitchBtn = document.getElementById('auth-switch-bank-btn');
     if (authSwitchBtn) {
-        // 移除可能存在的旧事件，避免重复绑定
         authSwitchBtn.onclick = null;
         authSwitchBtn.onclick = async () => {
+            if (isTrialMode) {
+                alert('试用模式下无法切换题库，请注册后使用完整功能。');
+                return;
+            }
             const newId = currentBankId === 1 ? 2 : 1;
             if (newId === currentBankId) return;
             currentBankId = newId;
-            // 重新加载新题库（优先使用部分数据）
             currentBank = null;
             currentBank = await loadBankData(currentBankId);
-            updateBankButtons();  // 更新两个按钮的文字
-            
-            // 如果练习面板已显示（试用模式或已登录），刷新当前题目
+            updateBankButtons();
             const practicePanel = document.getElementById('practice-panel');
             if (practicePanel && practicePanel.style.display !== 'none') {
                 updatePracticeNav();
                 loadPracticeQuestions();
                 renderPracticeQuestion();
             }
-            // 如果考试面板已显示，重新生成试卷
             const examPanel = document.getElementById('exam-panel');
             if (examPanel && examPanel.style.display !== 'none') {
                 generateExamPaper();
@@ -552,16 +1070,16 @@ async function initSystem() {
             }
         };
     }
+    
+    if (!isTrialMode && fullBankMaster["1"].single.length > 50) {
+        setTimeout(() => loadRemainingInBackground(currentBankId), 500);
+    }
+    
     setTimeout(() => {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 300);
         document.getElementById('disclaimerModal').style.display = 'flex';
     }, 400);
-    
-    // 如果已有完整缓存，后台补齐剩余题目
-    if (fullBankMaster["1"].single.length > 50) {
-        setTimeout(() => loadRemainingInBackground(currentBankId), 500);
-    }
 }
 
 async function loadBankData(bankId) {
@@ -569,81 +1087,117 @@ async function loadBankData(bankId) {
     const partial = getPartialBank(bankId);
     bankCache[bankId] = partial;
     bankProgress[bankId] = { totalBatches: 1, loadedBatches: 1 };
-    if (fullBankMaster && fullBankMaster[bankId] && fullBankMaster[bankId].single.length > 50) {
+    if (!isTrialMode && fullBankMaster && fullBankMaster[bankId] && fullBankMaster[bankId].single.length > 50) {
         setTimeout(() => loadRemainingInBackground(bankId), 100);
     }
     return partial;
 }
 
-// ---------- 以下为原有业务逻辑（完全不变，仅保留函数名） ----------
-function switchMode(mode) {
-    document.getElementById('practice-panel').style.display = mode==='practice'?'block':'none';
-    document.getElementById('exam-panel').style.display = mode==='exam'?'block':'none';
-    document.querySelectorAll('.mode-tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===mode));
-    if(mode==='exam') renderExamQuestion();
-}
-function initPractice() {
-    document.getElementById('all-questions-btn').onclick = () => { practiceMode='all'; updatePracticeNav(); loadPracticeQuestions(); };
-    document.getElementById('wrong-questions-btn').onclick = () => { if(isTrialMode) return alert('试用不支持错题库'); practiceMode='wrong'; updatePracticeNav(); loadPracticeQuestions(); };
-    document.querySelectorAll('[data-type]').forEach(b => b.addEventListener('click', function(){ practiceType = this.dataset.type; updatePracticeNav(); loadPracticeQuestions(); }));
-    document.getElementById('refresh-wrong-btn').onclick = async () => { await syncWrongOnLogin(); if(practiceMode==='wrong') loadPracticeQuestions(); };
-    document.getElementById('wrong-code-input').addEventListener('change', async function(){ if(isTrialMode||!currentUser) { wrongCode=this.value; await syncWrongOnLogin(); } });
-    document.getElementById('practice-prev').onclick = () => { if(practiceIndex>0){ practiceIndex--; renderPracticeQuestion(); } };
-    document.getElementById('practice-next').onclick = () => { if(practiceIndex<practiceQuestions.length-1){ practiceIndex++; renderPracticeQuestion(); } };
-    document.getElementById('practice-confirm').onclick = practiceConfirm;
-    document.getElementById('practice-jump-btn').onclick = () => { let idx = parseInt(document.getElementById('practice-jump').value)-1; if(idx>=0 && idx<practiceQuestions.length) { practiceIndex = idx; renderPracticeQuestion(); } };
-    document.getElementById('export-wrong-btn').onclick = exportWrongItems;
-    document.getElementById('import-wrong-btn').onclick = () => document.getElementById('import-file-input').click();
-    document.getElementById('import-file-input').onchange = function(e) { if(e.target.files.length) { importWrongItems(e.target.files[0]); e.target.value = ''; } };
-}
-function updatePracticeNav() { document.getElementById('all-questions-btn').classList.toggle('active', practiceMode==='all'); document.getElementById('wrong-questions-btn').classList.toggle('active', practiceMode==='wrong'); document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type===practiceType)); document.getElementById('current-info-text').textContent = `当前作答：${practiceMode==='all'?'全部题库':'错题库'} ${practiceType==='single'?'单选题':practiceType==='multiple'?'多选题':'判断题'} (第${currentBankId}题库)`; }
-function loadPracticeQuestions() { if(!currentBank) return; practiceQuestions = practiceMode==='all' ? [...currentBank[practiceType]] : getWrongQuestionsByType(practiceType); practiceIndex = 0; renderPracticeQuestion(); }
-function renderPracticeQuestion() { if(!currentBank || practiceQuestions.length===0) { document.getElementById('practice-q-num').textContent = '暂无题目'; document.getElementById('practice-q-text').textContent = '当前题库没有题目'; document.getElementById('practice-options').innerHTML = ''; document.getElementById('practice-feedback').style.display = 'none'; document.getElementById('practice-progress').textContent = '题目 0/0'; document.getElementById('practice-prev').disabled = true; document.getElementById('practice-next').disabled = true; return; } if(practiceIndex >= practiceQuestions.length) practiceIndex = 0; const q = practiceQuestions[practiceIndex]; document.getElementById('practice-q-num').textContent = `题目 ${practiceIndex+1}`; document.getElementById('practice-q-text').textContent = q.question; const opts = document.getElementById('practice-options'); opts.innerHTML = ''; q.options.forEach((opt, i) => { const li = document.createElement('li'); li.textContent = opt; li.dataset.value = String.fromCharCode(65+i); li.addEventListener('click', () => selectPracticeOption(li, q.type)); opts.appendChild(li); }); selectedOptions = []; document.getElementById('practice-feedback').style.display = 'none'; document.getElementById('practice-prev').disabled = practiceIndex === 0; document.getElementById('practice-next').disabled = practiceIndex === practiceQuestions.length-1; document.getElementById('practice-progress').textContent = `题目 ${practiceIndex+1}/${practiceQuestions.length}`; document.getElementById('practice-jump').max = practiceQuestions.length; document.getElementById('practice-jump').value = practiceIndex+1; }
-function selectPracticeOption(el, type) { const val = el.dataset.value; if(type === 'multiple') { if(selectedOptions.includes(val)) { selectedOptions = selectedOptions.filter(v=>v!==val); el.classList.remove('selected'); } else { selectedOptions.push(val); el.classList.add('selected'); } } else { document.querySelectorAll('#practice-options li').forEach(li => li.classList.remove('selected')); selectedOptions = [val]; el.classList.add('selected'); } }
-async function practiceConfirm() { if(isTrialMode && trialRemaining <= 0) { alert('试用结束'); return; } if(selectedOptions.length === 0) { alert('请选择答案'); return; } const q = practiceQuestions[practiceIndex]; let correct = false; if(q.type === 'multiple') correct = selectedOptions.length === q.answer.length && selectedOptions.every(v => q.answer.includes(v)) && q.answer.every(a => selectedOptions.includes(a)); else correct = selectedOptions[0] === q.answer; const fb = document.getElementById('practice-feedback'); fb.style.display = 'block'; fb.className = 'feedback ' + (correct?'correct':'incorrect'); fb.textContent = correct ? '回答正确！' : `错误！正确答案：${q.type==='multiple'?q.answer.join('、'):q.answer}`; if(correct && practiceMode==='wrong' && !isTrialMode && wrongCode) { await removeWrongItem(q); practiceQuestions = getWrongQuestionsByType(practiceType); if(practiceQuestions.length === 0) { alert('该题型错题已全部掌握'); practiceMode = 'all'; updatePracticeNav(); loadPracticeQuestions(); } else { if(practiceIndex >= practiceQuestions.length) practiceIndex = practiceQuestions.length-1; renderPracticeQuestion(); } } else if(!correct && practiceMode==='all' && !isTrialMode && wrongCode) { await addWrongItem(q); } }
-function initExam() {
-    document.getElementById('exam-single-btn').onclick = () => { examData.filterType='single'; examData.currentIndex=0; renderExamQuestion(); };
-    document.getElementById('exam-multi-btn').onclick = () => { examData.filterType='multiple'; examData.currentIndex=0; renderExamQuestion(); };
-    document.getElementById('exam-judge-btn').onclick = () => { examData.filterType='judgment'; examData.currentIndex=0; renderExamQuestion(); };
-    document.getElementById('exam-unanswered-btn').onclick = () => { examData.filterType='unanswered'; examData.currentIndex=0; renderExamQuestion(); };
-    document.getElementById('exam-prev-btn').onclick = () => { if(examData.currentIndex>0){ examData.currentIndex--; renderExamQuestion(); } };
-    document.getElementById('exam-next-btn').onclick = () => { const qs = getFilteredExamQuestions(); if(examData.currentIndex < qs.length-1) { examData.currentIndex++; renderExamQuestion(); } };
-    document.getElementById('exam-confirm-btn').onclick = examConfirm;
-    document.getElementById('exam-submit-btn').onclick = () => { if(!examData.submitted) document.getElementById('submit-confirm-modal').style.display='block'; };
-    document.getElementById('exam-newtest-btn').onclick = () => { document.getElementById('confirm-modal').style.display='block'; };
-    document.getElementById('confirm-yes').onclick = () => { closeModal('confirm-modal'); generateExamPaper(); };
-    document.getElementById('confirm-no').onclick = () => closeModal('confirm-modal');
-    document.getElementById('submit-yes').onclick = () => { closeModal('submit-confirm-modal'); submitExam(); };
-    document.getElementById('submit-no').onclick = () => closeModal('submit-confirm-modal');
-    document.getElementById('restart-exam-btn').onclick = () => { closeModal('result-modal'); generateExamPaper(); };
-    document.getElementById('exam-wrong-btn').onclick = () => showExamWrongModal();
-    document.getElementById('result-wrong-btn').onclick = () => showExamWrongModal();
-    generateExamPaper();
-}
-function shuffle(arr) { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-function generateExamPaper() { if(!currentBank) return; examData = { questions:[], userAnswers:{}, currentIndex:0, filterType:'all', answeredCount:0, confirmed:{}, submitted:false, scores:{single:0,multiple:0,judgment:0} }; examWrongDetails = []; const singles = shuffle([...currentBank.single]).slice(0, Math.min(100, currentBank.single.length)); const multis = shuffle([...currentBank.multiple]).slice(0, Math.min(20, currentBank.multiple.length)); const judges = shuffle([...currentBank.judgment]).slice(0, Math.min(20, currentBank.judgment.length)); singles.forEach((q,i) => { q.type='single'; q.questionNumber=i+1; examData.questions.push(q); }); multis.forEach((q,i) => { q.type='multiple'; q.questionNumber=singles.length+i+1; examData.questions.push(q); }); judges.forEach((q,i) => { q.type='judgment'; q.questionNumber=singles.length+multis.length+i+1; examData.questions.push(q); }); if(isTrialMode) examData.questions = examData.questions.slice(0,5); renderExamQuestion(); }
-function getFilteredExamQuestions() { let qs = examData.questions; if(examData.filterType==='single') qs = qs.filter(q=>q.type==='single'); else if(examData.filterType==='multiple') qs = qs.filter(q=>q.type==='multiple'); else if(examData.filterType==='judgment') qs = qs.filter(q=>q.type==='judgment'); else if(examData.filterType==='unanswered') qs = qs.filter(q=>!examData.userAnswers[q.questionNumber]); return qs; }
-function renderExamQuestion() { const qs = getFilteredExamQuestions(); if(qs.length===0) return; const q = qs[examData.currentIndex]; document.getElementById('exam-q-title').textContent = `${q.questionNumber}. ${q.question}`; const cont = document.getElementById('exam-options-container'); cont.innerHTML = ''; q.options.forEach((opt,i) => { const div = document.createElement('div'); div.className = 'option-exam'; const letter = String.fromCharCode(65+i); div.dataset.letter = letter; div.innerHTML = `<span class="option-letter">${letter}</span>${opt}`; div.onclick = () => handleExamOptionClick(letter, q); if(examData.userAnswers[q.questionNumber]) { const ans = examData.userAnswers[q.questionNumber]; if(q.type==='multiple') { if(ans.split(',').includes(letter)) div.classList.add('selected'); } else { if(ans===letter) div.classList.add('selected'); } } cont.appendChild(div); }); document.getElementById('exam-current').textContent = q.questionNumber; document.getElementById('exam-total').textContent = examData.questions.length; document.getElementById('exam-answered').textContent = examData.answeredCount; document.getElementById('exam-total-count').textContent = examData.questions.length; document.getElementById('exam-type-notice').textContent = {'single':'单选题0.5分','multiple':'多选题2分(漏选0.5/个)','judgment':'判断题0.5分'}[q.type]||''; }
-function handleExamOptionClick(letter, q) { if(examData.submitted || examData.confirmed[q.questionNumber]) return; if(q.type === 'multiple') { let cur = examData.userAnswers[q.questionNumber] || ''; let arr = cur ? cur.split(',') : []; if(arr.includes(letter)) arr = arr.filter(l=>l!==letter); else arr.push(letter); examData.userAnswers[q.questionNumber] = arr.join(','); } else { examData.userAnswers[q.questionNumber] = letter; } examData.answeredCount = Object.keys(examData.userAnswers).length; renderExamQuestion(); }
-function examConfirm() { const qs = getFilteredExamQuestions(); const q = qs[examData.currentIndex]; if(!examData.userAnswers[q.questionNumber]) { alert('请选择答案'); return; } examData.confirmed[q.questionNumber] = true; renderExamQuestion(); }
-async function submitExam() { examData.submitted = true; examWrongDetails = []; for(const q of examData.questions) { const ua = examData.userAnswers[q.questionNumber]; if(!ua) continue; let correct = false; if(q.type === 'multiple') { const uArr = ua.split(','); const cArr = q.answer; const full = uArr.length===cArr.length && uArr.every(v=>cArr.includes(v)); if(full) { examData.scores.multiple += 2; correct = true; } else { const hasWrong = uArr.some(v=>!cArr.includes(v)); if(!hasWrong) { let sc = uArr.length*0.5; if(sc>1.5) sc=1.5; examData.scores.multiple += sc; } } } else { if(ua === q.answer) { correct = true; if(q.type==='single') examData.scores.single+=0.5; else examData.scores.judgment+=0.5; } } if(!correct) { examWrongDetails.push({ questionNumber:q.questionNumber, title:q.question, type:q.type, userAnswer:ua, correctAnswer:Array.isArray(q.answer)?q.answer.join(','):q.answer, correctAnswerText: q.type==='multiple' ? q.answer.map(a=>q.options[a.charCodeAt(0)-65]).join('；') : q.options[q.answer.charCodeAt(0)-65] }); if(!isTrialMode && wrongCode) await addWrongItem(q); } } const total = examData.scores.single + examData.scores.multiple + examData.scores.judgment; document.getElementById('result-details').innerHTML = `<p>单选:${examData.scores.single.toFixed(1)} 多选:${examData.scores.multiple.toFixed(1)} 判断:${examData.scores.judgment.toFixed(1)}</p><h3>总分:${total.toFixed(1)}</h3>`; document.getElementById('result-modal').style.display = 'block'; }
-function showExamWrongModal() { document.getElementById('wrong-count').textContent = examWrongDetails.length; document.getElementById('wrong-list').innerHTML = examWrongDetails.map(w => `<div class="wrong-question-card"><div><b>${w.questionNumber}. [${w.type==='single'?'单选':'多选'}] ${w.title}</b></div><div style="color:#d32f2f;">您的答案：${w.userAnswer}</div><div style="color:#2e7d32;">正确答案：${w.correctAnswer} (${w.correctAnswerText})</div></div>`).join(''); document.getElementById('wrong-modal').style.display = 'block'; }
-window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
-window.switchAuthTab = function(tab) { document.querySelectorAll('.auth-tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.auth-form').forEach(f=>f.classList.remove('active')); if(tab==='login') { document.querySelector('.auth-tab:nth-child(1)').classList.add('active'); document.getElementById('login-form').classList.add('active'); } else { document.querySelector('.auth-tab:nth-child(2)').classList.add('active'); document.getElementById('register-form').classList.add('active'); } };
-function showMsg(id,msg,type){ const el=document.getElementById(id+'-message'); el.textContent=msg; el.className='message '+type; setTimeout(()=>el.className='message',5000); }
-window.handleRegister = async function(e) { e.preventDefault(); const email=document.getElementById('reg-email').value.trim(); const phone=document.getElementById('reg-phone').value.trim(); const pwd=document.getElementById('reg-password').value; const libCode=document.getElementById('reg-lib-code').value.trim(); if(pwd!==document.getElementById('reg-confirm').value) return showMsg('register','密码不一致','error'); if(!/^1[3-9]\d{9}$/.test(phone)) return showMsg('register','手机号无效','error'); if(!libCode) return showMsg('register','请输入库码','error'); try { let regs=[]; try{ const r=await fetch(CLOUD.API_READ+CLOUD.REG_KEY); if(r.ok) regs=await r.json(); }catch(e){} if(regs.find(r=>r.email===email)) return showMsg('register','邮箱已申请','error'); regs.push({email,phone,password:pwd,libCode,registerTime:new Date().toISOString(),status:'pending'}); await fetch(CLOUD.API_UPDATE, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`key=${CLOUD.REG_KEY}&value=${encodeURIComponent(JSON.stringify(regs))}`}); window.location.href=`mailto:${CLOUD.ADMIN_EMAIL}?subject=新注册&body=邮箱:${email} 手机:${phone} 库码:${libCode}`; showMsg('register','申请已提交','success'); setTimeout(()=>switchAuthTab('login'),3000); } catch(e) { showMsg('register','网络错误','error'); } };
-window.handleLogin = async function(e) { e.preventDefault(); const email=document.getElementById('login-email').value.trim(); const pwd=document.getElementById('login-password').value; const libCode=document.getElementById('login-lib-code').value.trim(); if(!libCode) return showMsg('login','请输入库码','error'); const userKey=getUserKey(libCode); try { const resp=await fetch(CLOUD.API_READ+userKey); if(!resp.ok) return showMsg('login','用户库读取失败','error'); const text=await resp.text(); if(!text) return showMsg('login','用户不存在','error'); const users=JSON.parse(text); const user=users.find(u=>u.email===email && u.password===pwd); if(user) { currentUser=user; isTrialMode=false; localStorage.setItem('slzck_user',JSON.stringify(user)); await enterApp(); } else showMsg('login','账号或密码错误','error'); } catch(e) { showMsg('login','网络错误','error'); } };
-window.startTrial = async function() { isTrialMode=true; trialRemaining=5; currentUser=null; await enterApp(); };
 async function enterApp() {
-    document.getElementById('auth-section').style.display='none'; document.getElementById('main-section').style.display='block';
-    if(isTrialMode){ document.getElementById('user-bar').style.display='none'; document.getElementById('trial-notice').style.display='block'; document.getElementById('trial-remaining').textContent=trialRemaining; document.getElementById('wrong-code-input').disabled=false; }
-    else { document.getElementById('user-bar').style.display='flex'; document.getElementById('trial-notice').style.display='none'; document.getElementById('user-email-display').textContent=`用户：${currentUser.email}`; document.getElementById('user-code-display').textContent=`错题码：${currentUser.wrongCode||'未分配'}`; if(currentUser.wrongCode){ document.getElementById('wrong-code-input').value=currentUser.wrongCode; document.getElementById('wrong-code-input').disabled=true; wrongCode=currentUser.wrongCode; await syncWrongOnLogin(); } }
-    const lastState=JSON.parse(localStorage.getItem('last_user_state')||'{}'); if(lastState.bankId) currentBankId=lastState.bankId; updateBankButtons(); currentBank = await loadBankData(currentBankId); if(!currentBank) { alert('题库加载失败，请检查数据'); return; } initPractice(); initExam(); if(lastState.practiceMode) practiceMode=lastState.practiceMode; if(lastState.practiceType) practiceType=lastState.practiceType; if(typeof lastState.practiceIndex==='number') practiceIndex=lastState.practiceIndex; updatePracticeNav(); loadPracticeQuestions(); if(practiceIndex >= practiceQuestions.length) practiceIndex=0; renderPracticeQuestion(); generateExamPaper(); document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active')); document.querySelector('.mode-tab[data-mode="practice"]').classList.add('active'); document.getElementById('practice-panel').style.display='block'; document.getElementById('exam-panel').style.display='none'; window.addEventListener('beforeunload', saveLastState); document.getElementById('logout-btn').onclick = async function() { await backupWrongToCloud(true); saveLastState(); currentUser=null; isTrialMode=false; localStorage.removeItem('slzck_user'); location.reload(); }; document.getElementById('backup-wrong-btn').onclick = async function() { if(!getWrongCloudKey()) return alert('未设置错题库码'); document.getElementById('backup-progress-modal').style.display='block'; document.getElementById('backup-progress-text').textContent='正在备份错题...'; document.getElementById('backup-progress-bar').value=0; await backupWrongToCloud(true); }; document.getElementById('auth-switch-bank-btn').onclick = async () => { const newId = currentBankId===1?2:1; currentBankId = newId; currentBank = null; currentBank = await loadBankData(newId); updateBankButtons(); updatePracticeNav(); loadPracticeQuestions(); renderPracticeQuestion(); generateExamPaper(); await syncWrongOnLogin(); }; document.getElementById('main-switch-bank-btn').onclick = document.getElementById('auth-switch-bank-btn').onclick;
+    document.getElementById('auth-section').style.display='none';
+    document.getElementById('main-section').style.display='block';
+    if(isTrialMode){
+        document.getElementById('user-bar').style.display='flex';
+        document.getElementById('wrongCodeContainer').style.display = 'none';
+        document.getElementById('wrong-questions-btn').style.display = 'none';
+        document.getElementById('trial-notice').style.display = 'flex';
+        document.getElementById('wrong-code-input').disabled = true;
+        document.getElementById('main-switch-bank-btn').disabled = true;
+        document.getElementById('main-switch-bank-btn').style.opacity = '0.5';
+        document.getElementById('auth-switch-bank-btn').disabled = true;
+        document.getElementById('auth-switch-bank-btn').style.opacity = '0.5';
+        document.getElementById('gotoRegisterBtn').onclick = () => {
+            document.getElementById('auth-section').style.display='block';
+            document.getElementById('main-section').style.display='none';
+            switchAuthTab('register');
+        };
+        const trialBank = getTrialBank();
+        if (trialBank) {
+            currentBank = trialBank;
+            bankCache[1] = trialBank;
+        } else {
+            alert('试用题库初始化失败，请刷新重试');
+            return;
+        }
+    } else {
+        document.getElementById('user-bar').style.display='flex';
+        document.getElementById('trial-notice').style.display='none';
+        document.getElementById('wrongCodeContainer').style.display = 'flex';
+        document.getElementById('wrong-questions-btn').style.display = 'block';
+        document.getElementById('main-switch-bank-btn').disabled = false;
+        document.getElementById('main-switch-bank-btn').style.opacity = '1';
+        document.getElementById('auth-switch-bank-btn').disabled = false;
+        document.getElementById('auth-switch-bank-btn').style.opacity = '1';
+        document.getElementById('user-email-display').textContent = `用户：${currentUser.email}`;
+        document.getElementById('user-code-display').textContent = `错题码：${currentUser.wrongCode||'未分配'}`;
+        if(currentUser.wrongCode){
+            document.getElementById('wrong-code-input').value = currentUser.wrongCode;
+            document.getElementById('wrong-code-input').disabled = true;
+            wrongCode = currentUser.wrongCode;
+            await syncWrongOnLogin();
+        }
+        currentBank = await loadBankData(currentBankId);
+    }
+    if(!currentBank) { alert('题库加载失败，请检查数据'); return; }
+    initPractice();
+    initExam();
+    if(!isTrialMode){
+        const lastState = JSON.parse(localStorage.getItem('last_user_state')||'{}');
+        if(lastState.practiceMode) practiceMode = lastState.practiceMode;
+        if(lastState.practiceType) practiceType = lastState.practiceType;
+        if(typeof lastState.practiceIndex === 'number') practiceIndex = lastState.practiceIndex;
+    } else {
+        practiceMode = 'all';
+        practiceType = 'single';
+        practiceIndex = 0;
+    }
+    updatePracticeNav();
+    loadPracticeQuestions();
+    if(practiceIndex >= practiceQuestions.length) practiceIndex = 0;
+    renderPracticeQuestion();
+    generateExamPaper();
+    document.querySelectorAll('.mode-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelector('.mode-tab[data-mode="practice"]').classList.add('active');
+    document.getElementById('practice-panel').style.display='block';
+    document.getElementById('exam-panel').style.display='none';
+    window.addEventListener('beforeunload', saveLastState);
+    document.getElementById('logout-btn').onclick = async function() {
+        if(!isTrialMode) await backupWrongToCloud(true);
+        saveLastState();
+        currentUser = null;
+        isTrialMode = false;
+        localStorage.removeItem('slzck_user');
+        location.reload();
+    };
+    document.getElementById('backup-wrong-btn').onclick = async function() {
+        if(!getWrongCloudKey()) return alert('未设置错题库码');
+        document.getElementById('backup-progress-modal').style.display='block';
+        document.getElementById('backup-progress-text').textContent='正在备份错题...';
+        document.getElementById('backup-progress-bar').value=0;
+        await backupWrongToCloud(true);
+    };
+    document.getElementById('main-switch-bank-btn').onclick = async () => {
+        if(isTrialMode) { alert('试用模式下无法切换题库'); return; }
+        const newId = currentBankId===1?2:1;
+        currentBankId = newId;
+        currentBank = null;
+        currentBank = await loadBankData(newId);
+        updateBankButtons();
+        updatePracticeNav();
+        loadPracticeQuestions();
+        renderPracticeQuestion();
+        generateExamPaper();
+        if(!isTrialMode) await syncWrongOnLogin();
+    };
 }
-function updateBankButtons() { const name='当前：第'+currentBankId+'题库'; document.getElementById('auth-switch-bank-btn').textContent='切换题库 ('+name+')'; document.getElementById('main-switch-bank-btn').textContent='切换题库 ('+name+')'; }
-document.querySelectorAll('.mode-tab').forEach(t=>t.addEventListener('click',function(){ switchMode(this.dataset.mode); }));
 
-// 弹窗倒计时和捐助逻辑
+function updateBankButtons() {
+    const name = '当前：第'+currentBankId+'题库';
+    document.getElementById('auth-switch-bank-btn').textContent = '切换题库 ('+name+')';
+    if(!isTrialMode) document.getElementById('main-switch-bank-btn').textContent = '切换题库 ('+name+')';
+}
+
+// ==================== 捐助与免责弹窗 ====================
 let donateCountdownInterval = null;
 function startDonateCountdown() {
     let seconds = 5;
@@ -667,6 +1221,7 @@ function showDonatePrompt() { document.getElementById('donatePromptModal').style
 document.addEventListener('click', function(e) { if (e.target.id === 'donateBtnReg' || e.target.id === 'donateBtnMain') showDonatePrompt(); });
 document.getElementById('donateCancelBtn').addEventListener('click', function() { closeModal('donatePromptModal'); if (donateCountdownInterval) clearInterval(donateCountdownInterval); });
 document.getElementById('donateConfirmBtn').addEventListener('click', function() { if (document.getElementById('donateConfirmBtn').disabled) return; closeModal('donatePromptModal'); if (donateCountdownInterval) clearInterval(donateCountdownInterval); document.getElementById('donateModal').style.display = 'block'; });
+
 let disclaimerCountdown = 10;
 const agreeBtn = document.getElementById('agreeBtn');
 const countdownSpan = document.getElementById('countdown');
@@ -684,7 +1239,9 @@ function updateDisclaimerCountdown() {
 document.getElementById('disagreeBtn').addEventListener('click', function() { alert('您已拒绝免责声明，无法使用本系统。'); document.body.innerHTML = '<div style="text-align:center; margin-top:100px;"><h2>您已拒绝免责声明</h2><p>本系统无法继续使用。</p></div>'; });
 document.getElementById('agreeBtn').addEventListener('click', function() { if (agreeBtn.disabled) return; document.getElementById('disclaimerModal').style.display = 'none'; });
 
-// 启动
+document.querySelectorAll('.mode-tab').forEach(t=>t.addEventListener('click',function(){ switchMode(this.dataset.mode); }));
+
+// 启动系统
 updateDisclaimerCountdown();
 initSystem();
 </script>
